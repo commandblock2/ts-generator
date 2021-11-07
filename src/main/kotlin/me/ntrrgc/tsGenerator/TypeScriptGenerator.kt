@@ -23,7 +23,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.superclasses
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -80,7 +79,8 @@ class TypeScriptGenerator(
     classTransformers: List<ClassTransformer> = listOf(),
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
     private val intTypeName: String = "number",
-    private val voidType: VoidType = VoidType.NULL
+    private val voidType: VoidType = VoidType.NULL,
+    private val flags: List<Boolean>  = listOf(false,false),
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
     private val generatedDefinitions = mutableListOf<String>()
@@ -123,7 +123,11 @@ class TypeScriptGenerator(
         if (classifier is KClass<*>) {
             val existingMapping = mappings[classifier]
             if (existingMapping != null) {
-                return TypeScriptType.single(mappings[classifier]!!, kType.isMarkedNullable, voidType)
+                return TypeScriptType.single(mappings[classifier]!!+ if (kType.arguments.isNotEmpty()) {
+                    "<" + kType.arguments
+                        .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
+                        .joinToString(", ") + ">"
+                } else ""   , kType.isMarkedNullable, voidType)
             }
         }
         val classifierTsType = when (classifier) {
@@ -136,13 +140,13 @@ class TypeScriptGenerator(
             Float::class, Double::class -> "number"
             Any::class -> "any"
             else -> {
+                val boolSet = true
                 @Suppress("IfThenToElvis")
                 if (classifier is KClass<*>) {
-                    if (classifier.isSubclassOf(Set::class)) {
+                    if (flags[0] && classifier.isSubclassOf(Set::class)) {
                         // Use native JS associative object
                         val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
                         val keyType = formatKType(rawKeyType)
-                        println("keyTypeSet $keyType")
                         "Set<${keyType.formatWithoutParenthesis()}>"
                     }
                     else if (classifier.isSubclassOf(Iterable::class)
@@ -171,7 +175,6 @@ class TypeScriptGenerator(
                         val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
                         val keyType = formatKType(rawKeyType)
                         val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
-                        println("classifier $classifier, Ktype $kType, rawKeyType $rawKeyType, keyType $keyType, valueType $valueType" )
                         if ((rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true)
 
                             "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
@@ -196,12 +199,22 @@ class TypeScriptGenerator(
     }
 
     private fun generateEnum(klass: KClass<*>): String {
-        return "type ${klass.simpleName} = ${klass.java.enumConstants
-            .map { constant: Any ->
+        return if (flags[1]) {
+            "enum ${getNameKotlinToTypeScript(klass)} {\n" +
+                    klass.java.enumConstants.map { constant: Any ->
+                        "    ${constant.toString().toUpperCase()} = '${constant.toString().toUpperCase()}',\n"
+                    }.joinToString("") +
+                    "}"
+
+        } else {
+            "type ${getNameKotlinToTypeScript(klass)} = ${klass.java.enumConstants.map { constant: Any ->
                 constant.toString().toJSString()
             }
-            .joinToString(" | ")
-        };"
+                .joinToString(" | ")
+            };"
+        }
+
+
     }
 
     private fun generateInterface(klass: KClass<*>): String {
@@ -233,7 +246,7 @@ class TypeScriptGenerator(
             ""
         }
 
-        return "interface ${klass.simpleName}$templateParameters$extendsString {\n" +
+        return "interface ${getNameKotlinToTypeScript(klass)}$templateParameters$extendsString {\n" +
             klass.declaredMemberProperties
                 .filter { !isFunctionType(it.returnType.javaType) }
                 .filter {
@@ -265,6 +278,11 @@ class TypeScriptGenerator(
         } else {
             generateInterface(klass)
         }
+    }
+
+    private fun getNameKotlinToTypeScript(klass: KClass<*>): String?{
+        if(mappings[klass]!= null) return mappings[klass]
+        return klass.simpleName
     }
 
     // Public API:

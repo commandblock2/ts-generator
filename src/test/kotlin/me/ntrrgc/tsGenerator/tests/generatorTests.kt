@@ -17,13 +17,11 @@
 package me.ntrrgc.tsGenerator.tests
 
 import com.winterbe.expekt.should
-import me.ntrrgc.tsGenerator.ClassTransformer
-import me.ntrrgc.tsGenerator.TypeScriptGenerator
-import me.ntrrgc.tsGenerator.VoidType
-import me.ntrrgc.tsGenerator.onlyOnSubclassesOf
+import me.ntrrgc.tsGenerator.*
 import org.jetbrains.spek.api.Spek
 import org.jetbrains.spek.api.dsl.it
 import java.beans.Introspector
+import java.io.Serializable
 import java.time.Instant
 import java.util.*
 import kotlin.reflect.KClass
@@ -38,10 +36,11 @@ fun assertGeneratedCode(klass: KClass<*>,
                         mappings: Map<KClass<*>, String> = mapOf(),
                         classTransformers: List<ClassTransformer> = listOf(),
                         ignoreSuperclasses: Set<KClass<*>> = setOf(),
-                        voidType: VoidType = VoidType.NULL)
+                        voidType: VoidType = VoidType.NULL,
+                        flags: List<Boolean> = listOf(true,true))
 {
     val generator = TypeScriptGenerator(listOf(klass), mappings, classTransformers,
-        ignoreSuperclasses, intTypeName = "int", voidType = voidType)
+        ignoreSuperclasses, intTypeName = "int", voidType = voidType, flags = flags)
 
     val expected = expectedOutput
         .map(TypeScriptDefinitionFactory::fromCode)
@@ -53,8 +52,16 @@ fun assertGeneratedCode(klass: KClass<*>,
     actual.should.equal(expected)
 }
 
+data class Range<out T>(val start: T? = null, val stop: T? = null) : Serializable
+
+class CRange(
+    val aRange: Range<String>
+)
+
 class Empty
 class ClassWithMember(val a: String)
+
+
 class SimpleTypes(
     val aString: String,
     var anInt: Int,
@@ -115,12 +122,14 @@ abstract class AbstractClass(val concreteProperty: String) {
     abstract val abstractProperty: Int
     abstract fun abstractMethod()
 }
+
 enum class Direction {
     North,
     West,
     South,
     East
 }
+
 class ClassWithEnum(val direction: Direction)
 data class DataClass(val prop: String)
 class ClassWithAny(val required: Any, val optional: Any?)
@@ -287,7 +296,12 @@ interface ClassWithMember {
     interface ClassWithEnum {
         direction: Direction;
     }
-    """, """type Direction = "North" | "West" | "South" | "East";"""))
+    """, """enum Direction {
+    NORTH = 'NORTH',
+    WEST = 'WEST',
+    SOUTH = 'SOUTH',
+    EAST = 'EAST',
+}"""))
     }
 
     it("handles DataClass") {
@@ -330,6 +344,23 @@ interface ClassWithMember {
         aMapSet: { [key: string]: Set<string> };
     }
     """))
+    }
+
+    it("handles ClassRange with Custom Name Generate") {
+        assertGeneratedCode(Range::class, setOf("""
+    interface CustomRange<T> {
+        start: T | null;
+        stop: T | null;
+    }
+    """), mappings = mapOf(Range::class to "CustomRange"))
+    }
+
+    it("handles ClassWithCustomClassNameProperties using mapping") {
+        assertGeneratedCode(CRange::class, setOf("""
+    interface CRange {
+        aRange: CustomRange<string>;
+    }
+    """), mappings = mapOf(Range::class to "CustomRange"))
     }
 
     it("supports type mapping for classes") {
@@ -540,9 +571,12 @@ interface Widget {
     }
 
     it("transforms ClassWithEnumMap") {
-        assertGeneratedCode(ClassWithEnumMap::class, setOf("""
-    type Direction = "North" | "West" | "South" | "East";
-    """, """
+        assertGeneratedCode(ClassWithEnumMap::class, setOf("""enum Direction {
+    NORTH = 'NORTH',
+    WEST = 'WEST',
+    SOUTH = 'SOUTH',
+    EAST = 'EAST',
+}""", """
     interface ClassWithEnumMap {
         values: { [key in Direction]: string };
     }

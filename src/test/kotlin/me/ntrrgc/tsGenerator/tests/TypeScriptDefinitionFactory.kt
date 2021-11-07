@@ -24,6 +24,8 @@ object TypeScriptDefinitionFactory {
             return ClassDefinition(code)
         } else if (code.startsWith("type")) {
             return EnumDefinition(code)
+        } else if (code.startsWith("enum")) {
+            return EnumDefinition(code)
         } else {
             throw RuntimeException("Unknown definition type: $code")
         }
