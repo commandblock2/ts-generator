@@ -34,12 +34,13 @@ import kotlin.reflect.jvm.kotlinFunction
 fun assertGeneratedCode(klass: KClass<*>,
                         expectedOutput: Set<String>,
                         mappings: Map<KClass<*>, String> = mapOf(),
+                        mappingsKtToTs: Map<KClass<*>, String> = mapOf(),
                         classTransformers: List<ClassTransformer> = listOf(),
                         ignoreSuperclasses: Set<KClass<*>> = setOf(),
                         voidType: VoidType = VoidType.NULL,
                         flags: List<Boolean> = listOf(true,true))
 {
-    val generator = TypeScriptGenerator(listOf(klass), mappings, classTransformers,
+    val generator = TypeScriptGenerator(listOf(klass), mappings, mappingsKtToTs, classTransformers,
         ignoreSuperclasses, intTypeName = "int", voidType = voidType, flags = flags)
 
     val expected = expectedOutput
@@ -50,6 +51,19 @@ fun assertGeneratedCode(klass: KClass<*>,
         .toSet()
 
     actual.should.equal(expected)
+}
+
+class ClassWithEmbeddedEnum(
+    var storage: Storage = Storage.ram,
+) : ClassExtendsFromEmbedded() {
+    enum class Storage { ssd, ram }
+}
+abstract class ClassExtendsFromEmbedded : ExtendsEmbedded()
+open class ExtendsEmbedded(
+    override var type: String? = null,
+) : IExtendsEmbedded, Serializable
+interface IExtendsEmbedded{
+    var type: String?
 }
 
 data class Range<out T>(val start: T? = null, val stop: T? = null) : Serializable
@@ -352,15 +366,31 @@ interface ClassWithMember {
         start: T | null;
         stop: T | null;
     }
-    """), mappings = mapOf(Range::class to "CustomRange"))
+    """), mappingsKtToTs = mapOf(Range::class to "CustomRange"))
     }
 
-    it("handles ClassWithCustomClassNameProperties using mapping") {
-        assertGeneratedCode(CRange::class, setOf("""
-    interface CRange {
-        aRange: CustomRange<string>;
+    it("handles ClassWithCustomClassNameProperties using mappingKtToTs") {
+        assertGeneratedCode(CRange::class, setOf("""interface CustomRange<T> {
+    start: T | null;
+    stop: T | null;
+}""", """interface CRange {
+    aRange: CustomRange<string>;
+}"""), mappingsKtToTs = mapOf(Range::class to "CustomRange"))
     }
-    """), mappings = mapOf(Range::class to "CustomRange"))
+
+    it("handles DataStorage using mapping") {
+        assertGeneratedCode(ClassWithEmbeddedEnum::class, setOf("""
+           interface IExtendsEmbedded {
+            type: string | null;
+        }""", """interface ExtendsEmbedded extends IExtendsEmbedded {
+            type: string | null;
+        }""", """interface ClassExtendsFromEmbedded extends ExtendsEmbedded {
+        }""", """enum DataStorage {
+    SSD = 'SSD',
+    RAM = 'RAM',
+}""", """interface ClassWithEmbeddedEnum extends ClassExtendsFromEmbedded {
+            storage: DataStorage;
+        }"""), mappingsKtToTs = mapOf(ClassWithEmbeddedEnum.Storage::class to "DataStorage"))
     }
 
     it("supports type mapping for classes") {
