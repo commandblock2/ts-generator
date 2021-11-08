@@ -61,6 +61,8 @@ import kotlin.reflect.jvm.javaType
  * @param mappings Allows to map some JVM types with JS/TS types. This
  * can be used e.g. to map LocalDateTime to JS Date.
  *
+ * @param mappingsKtToTs Allows to map some KT name class into TS name Class.
+ *
  * @param classTransformers Special transformers for certain subclasses.
  * They allow to filter out some classes, customize what methods are
  * exported, how they names are generated and what types are generated.
@@ -72,10 +74,15 @@ import kotlin.reflect.jvm.javaType
  * @param intTypeName Defines the name integer numbers will be emitted as.
  * By default it's number, but can be changed to int if the TypeScript
  * version used supports it or the user wants to be extra explicit.
+ *
+ * @param flags The first value in the list of flags represents the
+ * possibility to use set<T> in typeScript and not arrays.
+ * The second value represents the possibility to use enum as classes
  */
 class TypeScriptGenerator(
     rootClasses: Iterable<KClass<*>>,
     private val mappings: Map<KClass<*>, String> = mapOf(),
+    private val mappingsKtToTs: Map<KClass<*>, String> = mapOf(),
     classTransformers: List<ClassTransformer> = listOf(),
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
     private val intTypeName: String = "number",
@@ -123,11 +130,17 @@ class TypeScriptGenerator(
         if (classifier is KClass<*>) {
             val existingMapping = mappings[classifier]
             if (existingMapping != null) {
-                return TypeScriptType.single(mappings[classifier]!!+ if (kType.arguments.isNotEmpty()) {
-                    "<" + kType.arguments
-                        .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
-                        .joinToString(", ") + ">"
-                } else ""   , kType.isMarkedNullable, voidType)
+                return TypeScriptType.single(existingMapping, kType.isMarkedNullable, voidType)
+            } else {
+                val existingNameInTypescript = mappingsKtToTs[classifier]
+                if (existingNameInTypescript != null) {
+                    visitClass(classifier)
+                    return TypeScriptType.single(existingNameInTypescript + if (kType.arguments.isNotEmpty()) {
+                        "<" + kType.arguments
+                            .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
+                            .joinToString(", ") + ">"
+                    } else "", kType.isMarkedNullable, voidType)
+                }
             }
         }
         val classifierTsType = when (classifier) {
@@ -140,7 +153,6 @@ class TypeScriptGenerator(
             Float::class, Double::class -> "number"
             Any::class -> "any"
             else -> {
-                val boolSet = true
                 @Suppress("IfThenToElvis")
                 if (classifier is KClass<*>) {
                     if (flags[0] && classifier.isSubclassOf(Set::class)) {
@@ -199,14 +211,13 @@ class TypeScriptGenerator(
     }
 
     private fun generateEnum(klass: KClass<*>): String {
+        println("flagsEnum"+flags[1])
         return if (flags[1]) {
-            println(klass)
             "enum ${getNameKotlinToTypeScript(klass)} {\n" +
                     klass.java.enumConstants.map { constant: Any ->
                         "    ${constant.toString().toUpperCase()} = '${constant.toString().toUpperCase()}',\n"
                     }.joinToString("") +
-                    "}"
-
+            "}"
         } else {
             "type ${getNameKotlinToTypeScript(klass)} = ${klass.java.enumConstants.map { constant: Any ->
                 constant.toString().toJSString()
@@ -282,7 +293,7 @@ class TypeScriptGenerator(
     }
 
     private fun getNameKotlinToTypeScript(klass: KClass<*>): String?{
-        if(mappings[klass]!= null) return mappings[klass]
+        if(mappingsKtToTs[klass]!= null) return mappingsKtToTs[klass]
         return klass.simpleName
     }
 
