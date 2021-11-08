@@ -80,7 +80,7 @@ class TypeScriptGenerator(
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
     private val intTypeName: String = "number",
     private val voidType: VoidType = VoidType.NULL,
-    private val flags: List<Boolean>  = listOf(false,false),
+    private val flags: List<Boolean> = listOf(false,false),
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
     private val generatedDefinitions = mutableListOf<String>()
@@ -200,6 +200,7 @@ class TypeScriptGenerator(
 
     private fun generateEnum(klass: KClass<*>): String {
         return if (flags[1]) {
+            println(klass)
             "enum ${getNameKotlinToTypeScript(klass)} {\n" +
                     klass.java.enumConstants.map { constant: Any ->
                         "    ${constant.toString().toUpperCase()} = '${constant.toString().toUpperCase()}',\n"
