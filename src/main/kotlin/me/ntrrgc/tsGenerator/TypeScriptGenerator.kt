@@ -231,7 +231,7 @@ class TypeScriptGenerator(
 
 
     }
-
+    //add '' to an enum with a -
     private fun transformPropertyEnum(toString: String): String {
         if (toString.contains('-')) {
             return "'${toString.toUpperCase()}'"
