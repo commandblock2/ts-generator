@@ -161,7 +161,7 @@ interface Empty {
     it("handles classes with a single member") {
         assertGeneratedCode(ClassWithMember::class, setOf("""
 interface ClassWithMember {
-    a: string;
+    a: string
 }
 """))
     }
@@ -169,9 +169,9 @@ interface ClassWithMember {
     it("handles SimpleTypes") {
         assertGeneratedCode(SimpleTypes::class, setOf("""
     interface SimpleTypes {
-        aString: string;
-        anInt: int;
-        aDouble: number;
+        aString: string
+        anInt: int
+        aDouble: number
     }
     """))
     }
@@ -179,8 +179,8 @@ interface ClassWithMember {
     it("handles ClassWithLists") {
         assertGeneratedCode(ClassWithLists::class, setOf("""
     interface ClassWithLists {
-        aList: string[];
-        anArrayList: string[];
+        aList: string[]
+        anArrayList: string[]
     }
     """))
     }
@@ -188,22 +188,22 @@ interface ClassWithMember {
     it("handles ClassWithArray") {
         assertGeneratedCode(ClassWithArray::class, setOf("""
     interface ClassWithArray {
-        items: string[];
+        items: string[]
     }
     """))
     }
 
     val widget = """
     interface Widget {
-        name: string;
-        value: int;
+        name: string
+        value: int
     }
     """
 
     it("handles ClassWithDependencies") {
         assertGeneratedCode(ClassWithDependencies::class, setOf("""
     interface ClassWithDependencies {
-        widget: Widget;
+        widget: Widget
     }
     """, widget))
     }
@@ -211,7 +211,7 @@ interface ClassWithMember {
     it("handles ClassWithNullables") {
         assertGeneratedCode(ClassWithNullables::class, setOf("""
     interface ClassWithNullables {
-        widget: Widget | null;
+        widget: Widget | null
     }
     """, widget))
     }
@@ -219,8 +219,8 @@ interface ClassWithMember {
     it("handles ClassWithMixedNullables using mapping") {
         assertGeneratedCode(ClassWithMixedNullables::class, setOf("""
     interface ClassWithMixedNullables {
-        count: int;
-        time: string | null;
+        count: int
+        time: string | null
     }
     """), mappings = mapOf(Instant::class to "string"))
     }
@@ -228,8 +228,8 @@ interface ClassWithMember {
     it("handles ClassWithMixedNullables using mapping and VoidTypes") {
         assertGeneratedCode(ClassWithMixedNullables::class, setOf("""
     interface ClassWithMixedNullables {
-        count: int;
-        time: string | undefined;
+        count: int
+        time: string | undefined
     }
     """), mappings = mapOf(Instant::class to "string"), voidType = VoidType.UNDEFINED)
     }
@@ -237,8 +237,8 @@ interface ClassWithMember {
     it("handles ClassWithComplexNullables") {
         assertGeneratedCode(ClassWithComplexNullables::class, setOf("""
     interface ClassWithComplexNullables {
-        maybeWidgets: (string | null)[] | null;
-        maybeWidgetsArray: (string | null)[] | null;
+        maybeWidgets: (string | null)[] | null
+        maybeWidgetsArray: (string | null)[] | null
     }
     """))
     }
@@ -246,7 +246,7 @@ interface ClassWithMember {
     it("handles ClassWithNullableList") {
         assertGeneratedCode(ClassWithNullableList::class, setOf("""
     interface ClassWithNullableList {
-        strings: string[] | null;
+        strings: string[] | null
     }
     """))
     }
@@ -254,9 +254,9 @@ interface ClassWithMember {
     it("handles GenericClass") {
         assertGeneratedCode(GenericClass::class, setOf("""
     interface GenericClass<A, B, C extends any[]> {
-        a: A;
-        b: (B | null)[];
-        c: C;
+        a: A
+        b: (B | null)[]
+        c: C
     }
     """))
     }
@@ -264,11 +264,11 @@ interface ClassWithMember {
     it("handles DerivedClass") {
         assertGeneratedCode(DerivedClass::class, setOf("""
     interface DerivedClass extends BaseClass {
-        b: string[];
+        b: string[]
     }
     """, """
     interface BaseClass {
-        a: int;
+        a: int
     }
     """))
     }
@@ -276,9 +276,9 @@ interface ClassWithMember {
     it("handles GenericDerivedClass") {
         assertGeneratedCode(GenericDerivedClass::class, setOf("""
     interface GenericClass<A, B, C extends any[]> {
-        a: A;
-        b: (B | null)[];
-        c: C;
+        a: A
+        b: (B | null)[]
+        c: C
     }
     ""","""
     interface Empty {
@@ -299,8 +299,8 @@ interface ClassWithMember {
     it("handles AbstractClass") {
         assertGeneratedCode(AbstractClass::class, setOf("""
     interface AbstractClass {
-        concreteProperty: string;
-        abstractProperty: int;
+        concreteProperty: string
+        abstractProperty: int
     }
     """))
     }
@@ -308,7 +308,7 @@ interface ClassWithMember {
     it("handles ClassWithEnum") {
         assertGeneratedCode(ClassWithEnum::class, setOf("""
     interface ClassWithEnum {
-        direction: Direction;
+        direction: Direction
     }
     """, """enum Direction {
     NORTH = 'NORTH',
@@ -321,7 +321,7 @@ interface ClassWithMember {
     it("handles DataClass") {
         assertGeneratedCode(DataClass::class, setOf("""
     interface DataClass {
-        prop: string;
+        prop: string
     }
     """))
     }
@@ -330,8 +330,8 @@ interface ClassWithMember {
         // Note: in TypeScript any includes null and undefined.
         assertGeneratedCode(ClassWithAny::class, setOf("""
     interface ClassWithAny {
-        required: any;
-        optional: any;
+        required: any
+        optional: any
     }
     """))
     }
@@ -339,7 +339,7 @@ interface ClassWithMember {
     it("handles ClassWithSet") {
         assertGeneratedCode(ClassWithSet::class, setOf("""
     interface ClassWithSet {
-        aSet: Set<string>;
+        aSet: Set<string>
     }
     """))
     }
@@ -347,7 +347,7 @@ interface ClassWithMember {
     it("handles ClassWithSetMap") {
         assertGeneratedCode(ClassWithSetMap::class, setOf("""
     interface ClassWithSetMap {
-        aSetMap: Set<{ [key: string]: string }>;
+        aSetMap: Set<{ [key: string]: string }>
     }
     """))
     }
@@ -355,7 +355,7 @@ interface ClassWithMember {
     it("handles ClassWithMapSet") {
         assertGeneratedCode(ClassWithMapSet::class, setOf("""
     interface ClassWithMapSet {
-        aMapSet: { [key: string]: Set<string> };
+        aMapSet: { [key: string]: Set<string> }
     }
     """))
     }
@@ -363,40 +363,40 @@ interface ClassWithMember {
     it("handles ClassRange with Custom Name Generate") {
         assertGeneratedCode(Range::class, setOf("""
     interface CustomRange<T> {
-        start: T | null;
-        stop: T | null;
+        start: T | null
+        stop: T | null
     }
     """), mappingsKtToTs = mapOf(Range::class to "CustomRange"))
     }
 
     it("handles ClassWithCustomClassNameProperties using mappingKtToTs") {
         assertGeneratedCode(CRange::class, setOf("""interface CustomRange<T> {
-    start: T | null;
-    stop: T | null;
+    start: T | null
+    stop: T | null
 }""", """interface CRange {
-    aRange: CustomRange<string>;
+    aRange: CustomRange<string>
 }"""), mappingsKtToTs = mapOf(Range::class to "CustomRange"))
     }
 
     it("handles DataStorage using mapping") {
         assertGeneratedCode(ClassWithEmbeddedEnum::class, setOf("""
            interface IExtendsEmbedded {
-            type: string | null;
+            type: string | null
         }""", """interface ExtendsEmbedded extends IExtendsEmbedded {
-            type: string | null;
+            type: string | null
         }""", """interface ClassExtendsFromEmbedded extends ExtendsEmbedded {
         }""", """enum DataStorage {
     SSD = 'SSD',
     RAM = 'RAM',
 }""", """interface ClassWithEmbeddedEnum extends ClassExtendsFromEmbedded {
-            storage: DataStorage;
+            storage: DataStorage
         }"""), mappingsKtToTs = mapOf(ClassWithEmbeddedEnum.Storage::class to "DataStorage"))
     }
 
     it("supports type mapping for classes") {
         assertGeneratedCode(ClassWithDependencies::class, setOf("""
 interface ClassWithDependencies {
-    widget: CustomWidget;
+    widget: CustomWidget
 }
 """), mappings = mapOf(Widget::class to "CustomWidget"))
     }
@@ -404,7 +404,7 @@ interface ClassWithDependencies {
     it("supports type mapping for basic types") {
         assertGeneratedCode(DataClass::class, setOf("""
     interface DataClass {
-        prop: CustomString;
+        prop: CustomString
     }
     """), mappings = mapOf(String::class to "CustomString"))
     }
@@ -412,7 +412,7 @@ interface ClassWithDependencies {
     it("supports transforming property names") {
         assertGeneratedCode(DataClass::class, setOf("""
     interface DataClass {
-        PROP: string;
+        PROP: string
     }
     """), classTransformers = listOf(
             object: ClassTransformer {
@@ -433,12 +433,12 @@ interface ClassWithDependencies {
     it("supports transforming only some classes") {
         assertGeneratedCode(ClassWithDependencies::class, setOf("""
 interface ClassWithDependencies {
-    widget: Widget;
+    widget: Widget
 }
 """, """
 interface Widget {
-    NAME: string;
-    VALUE: int;
+    NAME: string
+    VALUE: int
 }
 """), classTransformers = listOf(
             object : ClassTransformer {
@@ -452,7 +452,7 @@ interface Widget {
     it("supports transforming types") {
         assertGeneratedCode(DataClass::class, setOf("""
     interface DataClass {
-        prop: int | null;
+        prop: int | null
     }
     """), classTransformers = listOf(
             object : ClassTransformer {
@@ -470,8 +470,8 @@ interface Widget {
     it("supports filtering properties") {
         assertGeneratedCode(SimpleTypes::class, setOf("""
     interface SimpleTypes {
-        aString: string;
-        aDouble: number;
+        aString: string
+        aDouble: number
     }
     """), classTransformers = listOf(
             object : ClassTransformer {
@@ -485,11 +485,11 @@ interface Widget {
     it("supports filtering subclasses") {
         assertGeneratedCode(DerivedClass::class, setOf("""
     interface DerivedClass extends BaseClass {
-        B: string[];
+        B: string[]
     }
     """, """
     interface BaseClass {
-        A: int;
+        A: int
     }
     """), classTransformers = listOf(
             object : ClassTransformer {
@@ -503,9 +503,9 @@ interface Widget {
     it("uses all transformers in pipeline") {
         assertGeneratedCode(SimpleTypes::class, setOf("""
     interface SimpleTypes {
-        aString12: string;
-        aDouble12: number;
-        anInt12: int;
+        aString12: string
+        aDouble12: number
+        anInt12: int
     }
     """), classTransformers = listOf(
             object : ClassTransformer {
@@ -526,10 +526,10 @@ interface Widget {
     it("handles JavaClass") {
         assertGeneratedCode(JavaClass::class, setOf("""
     interface JavaClass {
-        name: string;
-        results: int[];
-        multidimensional: string[][];
-        finished: boolean;
+        name: string
+        results: int[]
+        multidimensional: string[][]
+        finished: boolean
     }
     """))
     }
@@ -537,9 +537,9 @@ interface Widget {
     it("handles JavaClassWithNullables") {
         assertGeneratedCode(JavaClassWithNullables::class, setOf("""
     interface JavaClassWithNullables {
-        name: string;
-        results: int[];
-        nextResults: int[] | null;
+        name: string
+        results: int[]
+        nextResults: int[] | null
     }
     """))
     }
@@ -547,9 +547,9 @@ interface Widget {
     it("handles JavaClassWithNonnullAsDefault") {
         assertGeneratedCode(JavaClassWithNonnullAsDefault::class, setOf("""
     interface JavaClassWithNonnullAsDefault {
-        name: string;
-        results: int[];
-        nextResults: int[] | null;
+        name: string
+        results: int[]
+        nextResults: int[] | null
     }
     """))
     }
@@ -557,8 +557,8 @@ interface Widget {
     it("handles JavaClassWithOptional") {
         assertGeneratedCode(JavaClassWithOptional::class, setOf("""
     interface JavaClassWithOptional {
-        name: string;
-        surname: string | null;
+        name: string
+        surname: string | null
     }
     """), classTransformers = listOf(
             object : ClassTransformer {
@@ -586,8 +586,8 @@ interface Widget {
     it("handles ClassWithComplexNullables when serializing as undefined") {
         assertGeneratedCode(ClassWithComplexNullables::class, setOf("""
     interface ClassWithComplexNullables {
-        maybeWidgets: (string | undefined)[] | undefined;
-        maybeWidgetsArray: (string | undefined)[] | undefined;
+        maybeWidgets: (string | undefined)[] | undefined
+        maybeWidgetsArray: (string | undefined)[] | undefined
     }
     """), voidType = VoidType.UNDEFINED)
     }
@@ -595,7 +595,7 @@ interface Widget {
     it("transforms ClassWithMap") {
         assertGeneratedCode(ClassWithMap::class, setOf("""
     interface ClassWithMap {
-        values: { [key: string]: string };
+        values: { [key: string]: string }
     }
     """))
     }
@@ -608,7 +608,7 @@ interface Widget {
     EAST = 'EAST',
 }""", """
     interface ClassWithEnumMap {
-        values: { [key in Direction]: string };
+        values: { [key in Direction]: string }
     }
     """))
     }
