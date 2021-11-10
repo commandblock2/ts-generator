@@ -75,7 +75,7 @@ import kotlin.reflect.jvm.javaType
  * By default it's number, but can be changed to int if the TypeScript
  * version used supports it or the user wants to be extra explicit.
  *
- * @param flags The first value in the list of flags represents the
+ * @param flags The first value in the list represents the
  * possibility to use set<T> in typeScript and not arrays.
  * The second value represents the possibility to use enum as classes
  */
@@ -131,14 +131,16 @@ class TypeScriptGenerator(
             val existingMapping = mappings[classifier]
             if (existingMapping != null) {
                 return TypeScriptType.single(existingMapping, kType.isMarkedNullable, voidType)
-            } else {
+            } else {// generate the based kotlin name class into the custom name in ts
                 val existingNameInTypescript = mappingsKtToTs[classifier]
                 if (existingNameInTypescript != null) {
                     visitClass(classifier)
                     return TypeScriptType.single(existingNameInTypescript + if (kType.arguments.isNotEmpty()) {
-                        "<" + kType.arguments
-                            .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
-                            .joinToString(", ") + ">"
+                        "<" + kType.arguments.joinToString(", ") { arg ->
+                            formatKType(
+                                arg.type ?: KotlinAnyOrNull
+                            ).formatWithoutParenthesis()
+                        } + ">"
                     } else "", kType.isMarkedNullable, voidType)
                 }
             }
@@ -195,9 +197,11 @@ class TypeScriptGenerator(
                     } else {
                         // Use class name, with or without template parameters
                         formatClassType(classifier) + if (kType.arguments.isNotEmpty()) {
-                            "<" + kType.arguments
-                                .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
-                                .joinToString(", ") + ">"
+                            "<" + kType.arguments.joinToString(", ") { arg ->
+                                formatKType(
+                                    arg.type ?: KotlinAnyOrNull
+                                ).formatWithoutParenthesis()
+                            } + ">"
                         } else ""
                     }
                 } else if (classifier is KTypeParameter) {
@@ -211,70 +215,68 @@ class TypeScriptGenerator(
     }
 
     private fun generateEnum(klass: KClass<*>): String {
-        println("flagsEnum"+flags[1])
         return if (flags[1]) {
-            "enum ${getNameKotlinToTypeScript(klass)} {\n" +
-                    klass.java.enumConstants.map { constant: Any ->
-                        "    ${constant.toString().toUpperCase()} = '${constant.toString().toUpperCase()}',\n"
-                    }.joinToString("") +
+            "enum ${getKotlinNameToTypeScript(klass)} {\n" +
+                    klass.java.enumConstants.joinToString("") { constant: Any ->
+                        "    ${transformPropertyEnum(constant.toString())} = '${constant.toString().toUpperCase()}',\n"
+                    } +
             "}"
         } else {
-            "type ${getNameKotlinToTypeScript(klass)} = ${klass.java.enumConstants.map { constant: Any ->
-                constant.toString().toJSString()
-            }
-                .joinToString(" | ")
+            "type ${getKotlinNameToTypeScript(klass)} = ${
+                klass.java.enumConstants.joinToString(" | ") { constant: Any ->
+                    constant.toString().toJSString()
+                }
             };"
         }
 
 
     }
 
+    private fun transformPropertyEnum(toString: String): String {
+        if (toString.contains('-')) {
+            return "'${toString.toUpperCase()}'"
+        }
+        return toString.toUpperCase()
+    }
+
     private fun generateInterface(klass: KClass<*>): String {
         val supertypes = klass.supertypes
             .filterNot { it.classifier in ignoredSuperclasses }
         val extendsString = if (supertypes.isNotEmpty()) {
-            " extends " + supertypes
-                .map { formatKType(it).formatWithoutParenthesis() }
-                .joinToString(", ")
+            " extends " + supertypes.joinToString(", ") { formatKType(it).formatWithoutParenthesis() }
         } else ""
 
         val templateParameters = if (klass.typeParameters.isNotEmpty()) {
-            "<" + klass.typeParameters
-                .map { typeParameter ->
-                    val bounds = typeParameter.upperBounds
-                        .filter { it.classifier != Any::class }
-                    typeParameter.name + if (bounds.isNotEmpty()) {
-                        " extends " + bounds
-                            .map { bound ->
-                                formatKType(bound).formatWithoutParenthesis()
-                            }
-                            .joinToString(" & ")
-                    } else {
-                        ""
+            "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
+                val bounds = typeParameter.upperBounds
+                    .filter { it.classifier != Any::class }
+                typeParameter.name + if (bounds.isNotEmpty()) {
+                    " extends " + bounds.joinToString(" & ") { bound ->
+                        formatKType(bound).formatWithoutParenthesis()
                     }
+                } else {
+                    ""
                 }
-                .joinToString(", ") + ">"
+            } + ">"
         } else {
             ""
         }
 
-        return "interface ${getNameKotlinToTypeScript(klass)}$templateParameters$extendsString {\n" +
-            klass.declaredMemberProperties
-                .filter { !isFunctionType(it.returnType.javaType) }
-                .filter {
-                    it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
-                }
-                .let { propertyList ->
-                    pipeline.transformPropertyList(propertyList, klass)
-                }
-                .map { property ->
-                    val propertyName = pipeline.transformPropertyName(property.name, property, klass)
-                    val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
+        return "interface ${getKotlinNameToTypeScript(klass)}$templateParameters$extendsString {\n" +
+                klass.declaredMemberProperties
+                    .filter { !isFunctionType(it.returnType.javaType) }
+                    .filter {
+                        it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
+                    }
+                    .let { propertyList ->
+                        pipeline.transformPropertyList(propertyList, klass)
+                    }.joinToString("") { property ->
+                        val propertyName = pipeline.transformPropertyName(property.name, property, klass)
+                        val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
 
-                    val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
-                    "    $propertyName: $formattedPropertyType;\n"
-                }
-                .joinToString("") +
+                        val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
+                        "    $propertyName: $formattedPropertyType;\n"
+                    } +
             "}"
     }
 
@@ -292,7 +294,7 @@ class TypeScriptGenerator(
         }
     }
 
-    private fun getNameKotlinToTypeScript(klass: KClass<*>): String?{
+    private fun getKotlinNameToTypeScript(klass: KClass<*>): String?{
         if(mappingsKtToTs[klass]!= null) return mappingsKtToTs[klass]
         return klass.simpleName
     }
