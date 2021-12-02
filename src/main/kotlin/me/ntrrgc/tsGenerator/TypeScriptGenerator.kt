@@ -220,13 +220,13 @@ class TypeScriptGenerator(
                     klass.java.enumConstants.joinToString("") { constant: Any ->
                         "    ${transformPropertyEnum(constant.toString())} = '${constant}',\n"
                     } +
-            "}"
+            "}".replace("\t","    ")
         } else {
             "type ${getKotlinNameToTypeScript(klass)} = ${
                 klass.java.enumConstants.joinToString(" | ") { constant: Any ->
                     constant.toString().toJSString()
                 }
-            };"
+            };".replace("\t","    ")
         }
 
 
@@ -277,7 +277,7 @@ class TypeScriptGenerator(
                         val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
                         "    $propertyName: $formattedPropertyType\n"
                     } +
-            "}"
+            "}".replace("\t","    ")
     }
 
     private fun isFunctionType(javaType: Type): Boolean {
