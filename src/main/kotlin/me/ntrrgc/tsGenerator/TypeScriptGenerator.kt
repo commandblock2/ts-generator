@@ -218,7 +218,7 @@ class TypeScriptGenerator(
         return if (flags[1]) {
             "enum ${getKotlinNameToTypeScript(klass)} {\n" +
                     klass.java.enumConstants.joinToString("") { constant: Any ->
-                        "    ${transformPropertyEnum(constant.toString())} = '${constant.toString().toUpperCase()}',\n"
+                        "    ${transformPropertyEnum(constant.toString())} = '${constant}',\n"
                     } +
             "}"
         } else {

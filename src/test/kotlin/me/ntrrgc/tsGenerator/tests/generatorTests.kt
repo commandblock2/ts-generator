@@ -54,9 +54,9 @@ fun assertGeneratedCode(klass: KClass<*>,
 }
 
 class ClassWithEmbeddedEnum(
-    var storage: Storage = Storage.ram,
+    var storage: Storage = Storage.RAM,
 ) : ClassExtendsFromEmbedded() {
-    enum class Storage { ssd, ram }
+    enum class Storage { SSD, RAM }
 }
 abstract class ClassExtendsFromEmbedded : ExtendsEmbedded()
 open class ExtendsEmbedded(
@@ -138,10 +138,10 @@ abstract class AbstractClass(val concreteProperty: String) {
 }
 
 enum class Direction {
-    North,
-    West,
-    South,
-    East
+    NORTH,
+    WEST,
+    SOUTH,
+    EAST
 }
 
 class ClassWithEnum(val direction: Direction)
