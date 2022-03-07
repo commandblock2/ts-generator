@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-group  "com.github.taktik"
+group  'com.github.taktik'
 version '1.2.2'
 
 buildscript {
@@ -78,17 +78,4 @@ dependencies {
 }
 
 apply plugin: 'maven-repository'
-apply plugin: 'maven-publish'
-
-publishing {
-    repositories {
-        maven {
-            url "https://maven.taktik.be/content/groups/public/"
-            credentials {
-                username repoUsername
-                password repoPassword
-            }
-        }
-    }
-}
 
