@@ -88,6 +88,7 @@ class TypeScriptGenerator(
     private val intTypeName: String = "number",
     private val voidType: VoidType = VoidType.NULL,
     private val flags: List<Boolean> = listOf(false,false),
+    private val  prefixeOnInterface: String = "",
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
     private val generatedDefinitions = mutableListOf<String>()
@@ -262,7 +263,7 @@ class TypeScriptGenerator(
             ""
         }
 
-        return "interface ${getKotlinNameToTypeScript(klass)}$templateParameters$extendsString {\n" +
+        return "interface $prefixeOnInterface${getKotlinNameToTypeScript(klass)}$templateParameters$extendsString {\n" +
                 klass.declaredMemberProperties
                     .filter { !isFunctionType(it.returnType.javaType) }
                     .filter {
