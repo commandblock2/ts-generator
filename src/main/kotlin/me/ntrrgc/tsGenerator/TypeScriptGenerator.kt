@@ -116,14 +116,13 @@ class TypeScriptGenerator(
     private fun visitClass(klass: KClass<*>) {
         if (klass !in visitedClasses) {
             visitedClasses.add(klass)
-
             generatedDefinitions.add(generateDefinition(klass))
         }
     }
 
     private fun formatClassType(type: KClass<*>): String {
         visitClass(type)
-        return type.simpleName!!
+        return if (type.java.isEnum || type in ignoredSuperclasses) type.simpleName!! else interfacesPrefixes + type.simpleName!!
     }
 
     private fun formatKType(kType: KType): TypeScriptType {
@@ -133,10 +132,11 @@ class TypeScriptGenerator(
             if (existingMapping != null) {
                 return TypeScriptType.single(existingMapping, kType.isMarkedNullable, voidType)
             } else {// generate the based kotlin name class into the custom name in ts
-                val existingNameInTypescript = mappingsKtToTs[classifier]
+                var existingNameInTypescript = mappingsKtToTs[classifier]
                 if (existingNameInTypescript != null) {
                     visitClass(classifier)
-                    return TypeScriptType.single(existingNameInTypescript + if (kType.arguments.isNotEmpty()) {
+                    existingNameInTypescript = if (classifier.java.isEnum || classifier in ignoredSuperclasses) existingNameInTypescript else interfacesPrefixes + existingNameInTypescript
+                    return TypeScriptType.single( existingNameInTypescript + if (kType.arguments.isNotEmpty()) {
                         "<" + kType.arguments.joinToString(", ") { arg ->
                             formatKType(
                                 arg.type ?: KotlinAnyOrNull
@@ -262,8 +262,8 @@ class TypeScriptGenerator(
         } else {
             ""
         }
-
-        return "interface $interfacesPrefixes${getKotlinNameToTypeScript(klass)}$templateParameters$extendsString {\n" +
+        val interfaceName = if ( klass in ignoredSuperclasses ) getKotlinNameToTypeScript(klass) else interfacesPrefixes + getKotlinNameToTypeScript(klass)
+        return "interface $interfaceName$templateParameters$extendsString {\n" +
                 klass.declaredMemberProperties
                     .filter { !isFunctionType(it.returnType.javaType) }
                     .filter {
@@ -274,7 +274,6 @@ class TypeScriptGenerator(
                     }.joinToString("") { property ->
                         val propertyName = pipeline.transformPropertyName(property.name, property, klass)
                         val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
-
                         val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
                         "    $propertyName: $formattedPropertyType\n"
                     } +

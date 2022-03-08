@@ -38,10 +38,11 @@ fun assertGeneratedCode(klass: KClass<*>,
                         classTransformers: List<ClassTransformer> = listOf(),
                         ignoreSuperclasses: Set<KClass<*>> = setOf(),
                         voidType: VoidType = VoidType.NULL,
-                        flags: List<Boolean> = listOf(true,true))
+                        flags: List<Boolean> = listOf(true,true),
+                        interfacesPrefixes: String = "")
 {
     val generator = TypeScriptGenerator(listOf(klass), mappings, mappingsKtToTs, classTransformers,
-        ignoreSuperclasses, intTypeName = "int", voidType = voidType, flags = flags)
+        ignoreSuperclasses, intTypeName = "int", voidType = voidType, flags = flags, interfacesPrefixes = interfacesPrefixes)
 
     val expected = expectedOutput
         .map(TypeScriptDefinitionFactory::fromCode)
@@ -52,6 +53,13 @@ fun assertGeneratedCode(klass: KClass<*>,
 
     actual.should.equal(expected)
 }
+
+class PrefixeTestInterface()
+class WithPrefixes(
+    val interfaceI: PrefixeTestInterface
+)
+
+
 
 class ClassWithEmbeddedEnum(
     var storage: Storage = Storage.RAM,
@@ -151,6 +159,18 @@ class ClassWithMap(val values: Map<String, String>)
 class ClassWithEnumMap(val values: Map<Direction, String>)
 
 class Tests: Spek({
+    it("handles Prefixes Class") {
+        assertGeneratedCode(WithPrefixes::class, setOf("""
+    interface IPrefixeTestInterface {
+    }
+    ""","""
+    interface IWithPrefixes {
+         interfaceI: IPrefixeTestInterface
+    }
+    """), interfacesPrefixes = "I" )
+    }
+
+
     it("handles empty class") {
         assertGeneratedCode(Empty::class, setOf("""
 interface Empty {
