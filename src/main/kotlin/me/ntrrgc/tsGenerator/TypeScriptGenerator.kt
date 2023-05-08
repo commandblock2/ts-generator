@@ -23,6 +23,7 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
+import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -302,8 +303,8 @@ class TypeScriptGenerator(
     }
 
     private fun getKotlinNameToTypeScript(klass: KClass<*>): String?{
-        if(mappingsKtToTs[klass]!= null) return mappingsKtToTs[klass]
-        return klass.simpleName
+        val overriddenName = klass.annotations.find { it.annotationClass.simpleName == "TypeScriptClassName" }?.let { annotation -> annotation.annotationClass.memberProperties.firstOrNull { it.name == "name" } ?.call(annotation) } as? String
+        return overriddenName ?: mappingsKtToTs[klass] ?: klass.simpleName
     }
 
     // Public API:
