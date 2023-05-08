@@ -182,19 +182,26 @@ class TypeScriptGenerator(
                             DoubleArray::class -> Double::class.createType(nullable = false)
 
                             // Class container types (they use generics)
-                            else -> kType.arguments.single().type ?: KotlinAnyOrNull
+                            else -> {
+                                try {
+                                    kType.arguments.single().type
+                                } catch (e: Exception) {
+                                    println("error in itemType $e")
+                                    KotlinAnyOrNull
+                                }
+
+                            }
                         }
-                        "${formatKType(itemType).formatWithParenthesis()}[]"
+                        "${itemType?.let { formatKType(it).formatWithParenthesis() }}[]"
                     } else if (classifier.isSubclassOf(Map::class)) {
                         // Use native JS associative object
                         val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
                         val keyType = formatKType(rawKeyType)
                         val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
                         if ((rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true)
-
-                            "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+                            "{ [key in ${keyType.formatWithoutParenthesis().replace(" | ${VoidType.NULL.jsTypeName}", "")}]?: ${valueType.formatWithoutParenthesis()} }".replace("| ${VoidType.NULL.jsTypeName}", "| ${VoidType.UNDEFINED.jsTypeName}")
                         else
-                            "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+                            "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }".replace("| ${VoidType.NULL.jsTypeName}", "| ${VoidType.UNDEFINED.jsTypeName}")
                     } else {
                         // Use class name, with or without template parameters
                         formatClassType(classifier) + if (kType.arguments.isNotEmpty()) {

@@ -628,7 +628,7 @@ interface Widget {
     EAST = 'EAST',
 }""", """
     interface ClassWithEnumMap {
-        values: { [key in Direction]: string }
+        values: { [key in Direction]?: string }
     }
     """))
     }
