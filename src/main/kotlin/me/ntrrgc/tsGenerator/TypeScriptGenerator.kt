@@ -283,7 +283,11 @@ class TypeScriptGenerator(
                         val propertyName = pipeline.transformPropertyName(property.name, property, klass)
                         val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
                         val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
-                        "    $propertyName: $formattedPropertyType\n"
+                        val deprecated = property.annotations.find { it.annotationClass.simpleName == "Deprecated" }?.let { annotation ->
+                            val msg = (annotation::class.memberProperties.find { it.name == "message" }?.getter?.call(annotation) as? String)?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+                            "/** @deprecated$msg */\n"
+                        } ?: ""
+                        "$deprecated    $propertyName: $formattedPropertyType\n"
                     } +
             "}".replace("\t","    ")
     }
