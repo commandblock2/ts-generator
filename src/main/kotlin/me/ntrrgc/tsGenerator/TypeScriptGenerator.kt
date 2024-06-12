@@ -317,4 +317,6 @@ class TypeScriptGenerator(
 
     val individualDefinitions: Set<String>
         get() = generatedDefinitions.values.toSet()
+
+    fun generatedDefinitions() = generatedDefinitions
 }
