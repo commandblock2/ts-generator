@@ -90,6 +90,7 @@ class TypeScriptGenerator(
     private val voidType: VoidType = VoidType.NULL,
     private val flags: List<Boolean> = listOf(false,false),
     private val interfacesPrefixes: String? = "",
+    private val extraSuperTypes: ((KClass<*>) -> Set<KType>) = { _ -> emptySet() },
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
     private val generatedDefinitions = mutableMapOf<KClass<*>, String>()
@@ -249,8 +250,7 @@ class TypeScriptGenerator(
     }
 
     private fun generateInterface(klass: KClass<*>): String {
-        val supertypes = klass.supertypes
-            .filterNot { it.classifier in ignoredSuperclasses }
+        val supertypes = (klass.supertypes.filterNot { it.classifier in ignoredSuperclasses } + extraSuperTypes.invoke(klass)).toSet()
         val extendsString = if (supertypes.isNotEmpty()) {
             " extends " + supertypes.joinToString(", ") { formatKType(it).formatWithoutParenthesis() }
         } else ""
