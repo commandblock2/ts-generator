@@ -92,7 +92,7 @@ class TypeScriptGenerator(
     private val interfacesPrefixes: String? = "",
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
-    private val generatedDefinitions = mutableListOf<String>()
+    private val generatedDefinitions = mutableMapOf<KClass<*>, String>()
     private val pipeline = ClassTransformerPipeline(classTransformers)
     private val ignoredSuperclasses = setOf(
         Any::class,
@@ -117,7 +117,7 @@ class TypeScriptGenerator(
     private fun visitClass(klass: KClass<*>) {
         if (klass !in visitedClasses) {
             visitedClasses.add(klass)
-            generatedDefinitions.add(generateDefinition(klass))
+            generatedDefinitions[klass] = generateDefinition(klass)
         }
     }
 
@@ -313,8 +313,8 @@ class TypeScriptGenerator(
 
     // Public API:
     val definitionsText: String
-        get() = generatedDefinitions.joinToString("\n\n")
+        get() = generatedDefinitions.values.joinToString("\n\n")
 
     val individualDefinitions: Set<String>
-        get() = generatedDefinitions.toSet()
+        get() = generatedDefinitions.values.toSet()
 }
