@@ -97,6 +97,7 @@ class TypeScriptGenerator(
     private val flags: List<Boolean> = listOf(false,false),
     private val interfacesPrefixes: String? = "",
     private val extraSuperTypes: ((KClass<*>) -> Set<KType>) = { _ -> emptySet() },
+    private val includeOverriddenProperties: Boolean = false,
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
     private val generatedDefinitions = mutableMapOf<KClass<*>, String>()
@@ -279,7 +280,7 @@ class TypeScriptGenerator(
         val interfaceName = if ( klass in ignoredSuperclasses ) getKotlinNameToTypeScript(klass) else interfacesPrefixes + getKotlinNameToTypeScript(klass)
         return "interface $interfaceName$templateParameters$extendsString {\n" +
                 klass.declaredMemberProperties
-                    .filterNot { p -> klass.allSuperclasses.flatMap { it.declaredMemberProperties }.any { it.name == p.name }}
+                    .filter { p -> includeOverriddenProperties || !klass.allSuperclasses.flatMap { it.declaredMemberProperties }.any { it.name == p.name }}
                     .filter { !isFunctionType(it.returnType.javaType) }
                     .filter {
                         it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
