@@ -403,7 +403,6 @@ interface ClassWithMember {
            interface IExtendsEmbedded {
             type: string | null
         }""", """interface ExtendsEmbedded extends IExtendsEmbedded {
-            type: string | null
         }""", """interface ClassExtendsFromEmbedded extends ExtendsEmbedded {
         }""", """enum DataStorage {
     SSD = 'SSD',
