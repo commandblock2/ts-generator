@@ -19,7 +19,13 @@ package me.ntrrgc.tsGenerator
 import java.beans.Introspector
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
-import kotlin.reflect.*
+import kotlin.reflect.KCallable
+import kotlin.reflect.KClass
+import kotlin.reflect.KProperty
+import kotlin.reflect.KType
+import kotlin.reflect.KTypeParameter
+import kotlin.reflect.KVisibility
+import kotlin.reflect.full.allSuperclasses
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
@@ -273,6 +279,7 @@ class TypeScriptGenerator(
         val interfaceName = if ( klass in ignoredSuperclasses ) getKotlinNameToTypeScript(klass) else interfacesPrefixes + getKotlinNameToTypeScript(klass)
         return "interface $interfaceName$templateParameters$extendsString {\n" +
                 klass.declaredMemberProperties
+                    .filterNot { p -> klass.allSuperclasses.flatMap { it.declaredMemberProperties }.any { it.name == p.name }}
                     .filter { !isFunctionType(it.returnType.javaType) }
                     .filter {
                         it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
