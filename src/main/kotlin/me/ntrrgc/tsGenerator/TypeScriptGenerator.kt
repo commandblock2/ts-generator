@@ -280,7 +280,7 @@ class TypeScriptGenerator(
         val interfaceName = if ( klass in ignoredSuperclasses ) getKotlinNameToTypeScript(klass) else interfacesPrefixes + getKotlinNameToTypeScript(klass)
         return "interface $interfaceName$templateParameters$extendsString {\n" +
                 klass.declaredMemberProperties
-                    .filter { p -> includeOverriddenProperties || !klass.allSuperclasses.flatMap { it.declaredMemberProperties }.any { it.name == p.name }}
+                    .filter { p -> includeOverriddenProperties || !klass.allSuperclasses.flatMap { it.declaredMemberProperties }.any { it.name == p.name && it.returnType == p.returnType }}
                     .filter { !isFunctionType(it.returnType.javaType) }
                     .filter {
                         it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
