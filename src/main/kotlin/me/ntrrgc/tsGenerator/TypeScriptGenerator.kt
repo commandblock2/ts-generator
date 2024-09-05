@@ -249,7 +249,7 @@ class TypeScriptGenerator(
     }
     //add '' to an enum with a -
     private fun transformPropertyEnum(toString: String): String {
-        if (toString.contains('-')) {
+        if (toString.contains('-') || toString.matches(Regex("^[0-9].*"))) {
             return "'${toString.toUpperCase()}'"
         }
         return toString.toUpperCase()
