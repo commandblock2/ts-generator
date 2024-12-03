@@ -324,61 +324,6 @@ interface JavaClass {
 }
 ```
 
-### Java nullability annotations
-
-Kotlin was designed with null-safety in mind, but the Java land is not so green.
-
-In Java all types are nullable by default, so the programmer needs some way to annotate which may and which will never be null. There are many ways to do this, each with its own set of drawbacks.
-
-The TypeScript generator makes no effort by itself to infer the nullability of Java types. Nevertheless kotlin-reflect is capable of decoding it if the classes are annotated with JSR305 annotations (`javax.annotation.*`). If no annotations are found, the types are assumed to be not null.
-
-Note that `org.jetbrains.annotations.*` and `android.support.annotation.*` **cannot** work for this purpose, as they don't have [runtime retention](https://docs.oracle.com/javase/8/docs/api/java/lang/annotation/Retention.html) and therefore are stripped by the compiler without leaving a way to read them through reflection.
-
-The following an example of a class with supported annotations:
-
-```java
-import javax.annotation.Nullable;
-import javax.annotation.ParametersAreNonnullByDefault;
-
-// Add this to Gradle/Maven to get the annotations:
-// compile 'com.google.code.findbugs:jsr305:3.0.1'
-
-@ParametersAreNonnullByDefault
-public class JavaClassWithNonnullAsDefault {
-    private int[] results;
-
-    @Nullable
-    private int[] nextResults;
-
-    JavaClassWithNonnullAsDefault(
-        int[] results, 
-        @Nullable int[] nextResults)
-    {
-        this.results = results;
-        this.nextResults = nextResults;
-    }
-
-    public int[] getResults() { return results; }
-    public void setResults(int[] results) { this.results = results; }
-
-    @Nullable
-    public int[] getNextResults() { return nextResults; }
-    public void setNextResults(@Nullable int[] nextResults) {
-        this.nextResults = nextResults;
-    }
-}
-```
-
-The output is the following:
-
-```typescript
-interface JavaClassWithNonnullAsDefault {
-    name: string;
-    results: number[];
-    nextResults: number[] | null;
-}
-```
-
 ### Transformers
 
 Sometimes they objects you use in TypeScript or JavaScript are not exactly the same you use in your backend, but have some differences, for instance:

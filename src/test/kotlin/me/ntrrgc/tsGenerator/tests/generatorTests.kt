@@ -440,17 +440,6 @@ interface Widget {
     """))
     }
 
-    "handles JavaClassWithNullables" {
-        assertGeneratedCode(JavaClassWithNullables::class, setOf("""
-    interface JavaClassWithNullables {
-        name: string;
-        results: int[];
-        nextResults: int[] | null;
-    }
-    """))
-    }
-
-
     "handles JavaClassWithOptional" {
         assertGeneratedCode(JavaClassWithOptional::class, setOf("""
     interface JavaClassWithOptional {
