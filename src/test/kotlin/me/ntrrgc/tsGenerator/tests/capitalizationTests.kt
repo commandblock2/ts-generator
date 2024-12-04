@@ -16,14 +16,15 @@
 
 package me.ntrrgc.tsGenerator.tests
 
-import com.winterbe.expekt.should
+
 import me.ntrrgc.tsGenerator.camelCaseToSnakeCase
 import me.ntrrgc.tsGenerator.snakeCaseToCamelCase
-import org.jetbrains.spek.api.Spek
-import org.jetbrains.spek.api.dsl.describe
-import org.jetbrains.spek.api.dsl.it
 
-class CapitalizationTests: Spek({
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
+
+
+class CapitalizationTests: DescribeSpec({
     describe("camelCaseToSnakeCase()") {
         val tests: List<Pair<String, String>> = listOf(
             "camelCase" to "camel_case",
@@ -39,7 +40,7 @@ class CapitalizationTests: Spek({
 
         tests.forEach { (camel, snake) ->
             it("handles $camel -> $snake") {
-                camelCaseToSnakeCase(camel).should.equal(snake)
+                camelCaseToSnakeCase(camel) shouldBe snake
             }
         }
     }
@@ -57,7 +58,7 @@ class CapitalizationTests: Spek({
 
         tests.forEach { (snake, camel) ->
             it("handles $snake -> $camel") {
-                snakeCaseToCamelCase(snake).should.equal(camel)
+                snakeCaseToCamelCase(snake) shouldBe camel
             }
         }
     }
