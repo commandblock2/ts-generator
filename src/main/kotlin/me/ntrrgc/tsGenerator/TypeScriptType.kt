@@ -44,10 +44,10 @@ internal class TypeScriptType private constructor(val types: List<String>) {
     }
 
     fun formatWithParenthesis(): String {
-        if (types.size == 1) {
-            return types.single()
+        return if (types.size == 1) {
+            types.single()
         } else {
-            return "(" + this.formatWithoutParenthesis() + ")"
+            "(" + this.formatWithoutParenthesis() + ")"
         }
     }
 

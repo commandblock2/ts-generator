@@ -86,6 +86,7 @@ import kotlin.reflect.jvm.javaType
  * possibility to use set<T> in typeScript and not arrays.
  * The second value represents the possibility to use enum as classes
  */
+@Suppress("unused")
 class TypeScriptGenerator(
     rootClasses: Iterable<KClass<*>>,
     private val mappings: Map<KClass<*>, String> = mapOf(),
@@ -250,9 +251,9 @@ class TypeScriptGenerator(
     //add '' to an enum with a -
     private fun transformPropertyEnum(toString: String): String {
         if (toString.contains('-') || toString.matches(Regex("^[0-9].*"))) {
-            return "'${toString.toUpperCase()}'"
+            return "'${toString.uppercase()}'"
         }
-        return toString.toUpperCase()
+        return toString.uppercase()
     }
 
     private fun generateInterface(klass: KClass<*>): String {
