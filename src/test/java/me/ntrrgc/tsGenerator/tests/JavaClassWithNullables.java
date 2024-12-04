@@ -17,40 +17,41 @@
 package me.ntrrgc.tsGenerator.tests;
 
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
+
 
 public class JavaClassWithNullables {
-    @Nonnull
+    @NotNull
     private String name;
 
-    @Nonnull
+    @NotNull
     private int[] results;
 
     @Nullable
     private int[] nextResults;
 
-    JavaClassWithNullables(@Nonnull String name, @Nonnull int[] results, @Nullable int[] nextResults) {
+    JavaClassWithNullables(@NotNull String name, @NotNull int[] results, @Nullable int[] nextResults) {
         this.name = name;
         this.results = results;
         this.nextResults = nextResults;
     }
 
-    @Nonnull
+    @NotNull
     public String getName() {
         return name;
     }
 
-    public void setName(@Nonnull String name) {
+    public void setName(@NotNull String name) {
         this.name = name;
     }
 
-    @Nonnull
+    @NotNull
     public int[] getResults() {
         return results;
     }
 
-    public void setResults(@Nonnull int[] results) {
+    public void setResults(@NotNull int[] results) {
         this.results = results;
     }
 

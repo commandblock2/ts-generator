@@ -16,15 +16,12 @@
 
 package me.ntrrgc.tsGenerator.tests
 
-
+import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.matchers.shouldBe
 import me.ntrrgc.tsGenerator.camelCaseToSnakeCase
 import me.ntrrgc.tsGenerator.snakeCaseToCamelCase
 
-import io.kotest.core.spec.style.DescribeSpec
-import io.kotest.matchers.shouldBe
-
-
-class CapitalizationTests: DescribeSpec({
+class CapitalizationTests : DescribeSpec({
     describe("camelCaseToSnakeCase()") {
         val tests: List<Pair<String, String>> = listOf(
             "camelCase" to "camel_case",
