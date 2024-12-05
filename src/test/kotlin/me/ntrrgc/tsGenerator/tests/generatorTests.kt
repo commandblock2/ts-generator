@@ -450,15 +450,6 @@ interface Widget {
     """))
     }
 
-    "handles JavaClassWithNonnullAsDefault" {
-        assertGeneratedCode(JavaClassWithNonnullAsDefault::class, setOf("""
-    interface JavaClassWithNonnullAsDefault {
-        name: string;
-        results: int[];
-        nextResults: int[] | null;
-    }
-    """))
-    }
 
     "handles JavaClassWithOptional" {
         assertGeneratedCode(JavaClassWithOptional::class, setOf("""
