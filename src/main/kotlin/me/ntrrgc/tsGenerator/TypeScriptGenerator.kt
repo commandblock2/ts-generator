@@ -23,7 +23,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.superclasses
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -83,7 +82,7 @@ class TypeScriptGenerator(
     private val voidType: VoidType = VoidType.NULL
 ) {
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
-    private val generatedDefinitions = mutableListOf<String>()
+    private val generatedDefinitions = mutableMapOf<String, String>()
     private val pipeline = ClassTransformerPipeline(classTransformers)
     private val ignoredSuperclasses = setOf(
         Any::class,
@@ -105,11 +104,23 @@ class TypeScriptGenerator(
         }
     }
 
+    private fun getFilePathForClass(klass: KClass<*>): String {
+        val packagePath = klass.java.`package`?.name?.replace('.', '/') ?: ""
+        val className = klass.simpleName
+        return if (packagePath.isEmpty()) {
+            "$className.d.ts"
+        } else {
+            "$packagePath/$className.d.ts"
+        }
+    }
+
     private fun visitClass(klass: KClass<*>) {
         if (klass !in visitedClasses) {
             visitedClasses.add(klass)
 
-            generatedDefinitions.add(generateDefinition(klass))
+            val filePath = getFilePathForClass(klass)
+            generatedDefinitions[filePath] = generatedDefinitions.getOrDefault(filePath, "") +
+                    "\n\n" + generateDefinition(klass)
         }
     }
 
@@ -261,9 +272,15 @@ class TypeScriptGenerator(
     }
 
     // Public API:
-    val definitionsText: String
-        get() = generatedDefinitions.joinToString("\n\n")
+    @Suppress("unused")
+    val definitionsMap: Map<String, String>
+        get() = generatedDefinitions.toMap()
 
+    @Suppress("unused")
+    val definitionsText: String
+        get() = generatedDefinitions.values.joinToString("\n\n")
+
+    @Suppress("unused")
     val individualDefinitions: Set<String>
-        get() = generatedDefinitions.toSet()
+        get() = generatedDefinitions.values.toSet()
 }
