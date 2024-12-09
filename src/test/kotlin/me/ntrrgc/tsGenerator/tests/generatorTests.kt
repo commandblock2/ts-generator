@@ -76,6 +76,10 @@ class Widget(
 class ClassWithDependencies(
     val widget: Widget
 )
+class ClassWithNestedDependencies(
+    val widget: Widget,
+    val classWithDependencies: ClassWithDependencies
+)
 class ClassWithMixedNullables(
     val count: Int,
     val time: Instant?
@@ -168,12 +172,23 @@ interface ClassWithMember {
     }
     """
 
-    "handles ClassWithDependencies" {
-        assertGeneratedCode(ClassWithDependencies::class, setOf("""
+    val classWithDependencies = """
     interface ClassWithDependencies {
         widget: Widget;
     }
-    """, widget))
+    """
+
+    "handles ClassWithDependencies" {
+        assertGeneratedCode(ClassWithDependencies::class, setOf(classWithDependencies, widget))
+    }
+
+    "handles ClassWithNestedDependencies" {
+        assertGeneratedCode(ClassWithNestedDependencies::class, setOf("""
+    interface ClassWithNestedDependencies {
+        classWithDependencies: ClassWithDependencies;
+        widget: Widget;
+    }
+    """, classWithDependencies, widget))
     }
 
     "handles ClassWithNullables" {
