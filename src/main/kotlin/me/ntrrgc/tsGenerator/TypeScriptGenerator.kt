@@ -22,6 +22,7 @@ import java.lang.reflect.Type
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
+import kotlin.reflect.full.declaredMembers
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaType
 
@@ -81,9 +82,18 @@ class TypeScriptGenerator(
     private val intTypeName: String = "number",
     private val voidType: VoidType = VoidType.NULL
 ) {
+
+
+    // We make an assumption of the Modules WILL contain only 1 class
+    // because there is no reliable way of dumping information at runtime
+    // source: claude-3-5-sonnet
+
     private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
-    private val generatedDefinitions = mutableMapOf<String, String>()
+
+    private val generatedDefinitions = mutableMapOf<String, List<String>>()
+    private val generatedImports = mutableMapOf<String, List<String>>()
     private val pipeline = ClassTransformerPipeline(classTransformers)
+
     private val ignoredSuperclasses = setOf(
         Any::class,
         java.io.Serializable::class,
@@ -115,13 +125,49 @@ class TypeScriptGenerator(
     }
 
     private fun visitClass(klass: KClass<*>) {
-        if (klass !in visitedClasses) {
-            visitedClasses.add(klass)
+        if (klass in visitedClasses)
+            return
 
-            val filePath = getFilePathForClass(klass)
-            generatedDefinitions[filePath] = generatedDefinitions.getOrDefault(filePath, "") +
-                    "\n\n" + generateDefinition(klass)
-        }
+        visitedClasses.add(klass)
+
+        val generatedFilePath = getFilePathForClass(klass)
+
+        // now extract all dependent types
+
+        (klass
+            // Supertypes
+            .supertypes.map { it.classifier }.asSequence() +
+                // Properties
+                klass.declaredMemberProperties.asSequence() +
+                // Functions
+                // Types of function parameters and return value
+                klass.declaredMembers.flatMap {
+                    it.parameters.map { param -> param.type.classifier }.asSequence() +
+                            listOf(it.returnType.classifier).asSequence()
+                    // now we need to deal with generics
+                    it.typeParameters.flatMap { typeParameter ->
+                        listOf(typeParameter).asSequence() +
+                                typeParameter.upperBounds.map { bound -> bound.classifier }
+                    }
+                } +
+                // see continue-sessions/what-is-type-upper-bounds.md for why we need to include the type arguments of functions here.
+                klass.typeParameters.flatMap {
+                    listOf(it).asSequence() +
+                            it.upperBounds.map { bound -> bound.classifier }
+                }
+
+
+                )
+            .filter { it is KClass<*> }
+            .also {
+                val importList = it.mapNotNull { (it as KClass<*>).simpleName }.toSet().toList()
+                generatedImports.put(
+                    generatedFilePath,
+                    generatedImports.getOrDefault(generatedFilePath, listOf()) + importList
+                )
+            }.forEach {
+                visitClass(it as KClass<*>)
+            }
     }
 
     private fun formatClassType(type: KClass<*>): String {
@@ -145,48 +191,20 @@ class TypeScriptGenerator(
             Long::class,
             Short::class,
             Byte::class -> intTypeName
+
             Float::class, Double::class -> "number"
             Any::class -> "any"
             else -> {
                 @Suppress("IfThenToElvis")
                 if (classifier is KClass<*>) {
                     if (classifier.isSubclassOf(Iterable::class)
-                        || classifier.javaObjectType.isArray)
-                    {
-                        // Use native JS array
-                        // Parenthesis are needed to disambiguate complex cases,
-                        // e.g. (Pair<string|null, int>|null)[]|null
-                        val itemType = when (kType.classifier) {
-                            // Native Java arrays... unfortunately simple array types like these
-                            // are not mapped automatically into kotlin.Array<T> by kotlin-reflect :(
-                            IntArray::class -> Int::class.createType(nullable = false)
-                            ShortArray::class -> Short::class.createType(nullable = false)
-                            ByteArray::class -> Byte::class.createType(nullable = false)
-                            CharArray::class -> Char::class.createType(nullable = false)
-                            LongArray::class -> Long::class.createType(nullable = false)
-                            FloatArray::class -> Float::class.createType(nullable = false)
-                            DoubleArray::class -> Double::class.createType(nullable = false)
-
-                            // Class container types (they use generics)
-                            else -> kType.arguments.single().type ?: KotlinAnyOrNull
-                        }
-                        "${formatKType(itemType).formatWithParenthesis()}[]"
+                        || classifier.javaObjectType.isArray
+                    ) {
+                        arrayFromKType(kType)
                     } else if (classifier.isSubclassOf(Map::class)) {
-                        // Use native JS associative object
-                        val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
-                        val keyType = formatKType(rawKeyType)
-                        val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
-                        if ((rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true)
-                            "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
-                        else
-                            "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+                        mapFromKType(kType)
                     } else {
-                        // Use class name, with or without template parameters
-                        formatClassType(classifier) + if (kType.arguments.isNotEmpty()) {
-                            "<" + kType.arguments
-                                .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
-                                .joinToString(", ") + ">"
-                        } else ""
+                        nonPrimitiveFromKType(kType)
                     }
                 } else if (classifier is KTypeParameter) {
                     classifier.name
@@ -199,12 +217,53 @@ class TypeScriptGenerator(
         return TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType)
     }
 
+    private fun nonPrimitiveFromKType(kType: KType): String =
+        // Use class name, with or without template parameters
+        formatClassType(kType.classifier as KClass<*>) + if (kType.arguments.isNotEmpty()) {
+            "<" + kType.arguments
+                .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
+                .joinToString(", ") + ">"
+        } else ""
+
+    private fun arrayFromKType(kType: KType): String {
+        // Use native JS array
+        // Parenthesis are needed to disambiguate complex cases,
+        // e.g. (Pair<string|null, int>|null)[]|null
+        val itemType = when (kType.classifier) {
+            // Native Java arrays... unfortunately simple array types like these
+            // are not mapped automatically into kotlin.Array<T> by kotlin-reflect :(
+            IntArray::class -> Int::class.createType(nullable = false)
+            ShortArray::class -> Short::class.createType(nullable = false)
+            ByteArray::class -> Byte::class.createType(nullable = false)
+            CharArray::class -> Char::class.createType(nullable = false)
+            LongArray::class -> Long::class.createType(nullable = false)
+            FloatArray::class -> Float::class.createType(nullable = false)
+            DoubleArray::class -> Double::class.createType(nullable = false)
+
+            // Class container types (they use generics)
+            else -> kType.arguments.single().type ?: KotlinAnyOrNull
+        }
+        return "${formatKType(itemType).formatWithParenthesis()}[]"
+    }
+
+    private fun mapFromKType(kType: KType): String {
+        // Use native JS associative object
+        val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
+        val keyType = formatKType(rawKeyType)
+        val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
+        return if ((rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true)
+            "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+        else
+            "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+    }
+
     private fun generateEnum(klass: KClass<*>): String {
-        return "type ${klass.simpleName} = ${klass.java.enumConstants
-            .map { constant: Any ->
-                constant.toString().toJSString()
-            }
-            .joinToString(" | ")
+        return "type ${klass.simpleName} = ${
+            klass.java.enumConstants
+                .map { constant: Any ->
+                    constant.toString().toJSString()
+                }
+                .joinToString(" | ")
         };"
     }
 
@@ -238,29 +297,29 @@ class TypeScriptGenerator(
         }
 
         return "interface ${klass.simpleName}$templateParameters$extendsString {\n" +
-            klass.declaredMemberProperties
-                .filter { !isFunctionType(it.returnType.javaType) }
-                .filter {
-                    it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
-                }
-                .let { propertyList ->
-                    pipeline.transformPropertyList(propertyList, klass)
-                }
-                .map { property ->
-                    val propertyName = pipeline.transformPropertyName(property.name, property, klass)
-                    val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
+                klass.declaredMemberProperties
+                    .filter { !isFunctionType(it.returnType.javaType) }
+                    .filter {
+                        it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
+                    }
+                    .let { propertyList ->
+                        pipeline.transformPropertyList(propertyList, klass)
+                    }
+                    .map { property ->
+                        val propertyName = pipeline.transformPropertyName(property.name, property, klass)
+                        val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
 
-                    val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
-                    "    $propertyName: $formattedPropertyType;\n"
-                }
-                .joinToString("") +
-            "}"
+                        val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
+                        "    $propertyName: $formattedPropertyType;\n"
+                    }
+                    .joinToString("") +
+                "}"
     }
 
     private fun isFunctionType(javaType: Type): Boolean {
         return javaType is KCallable<*>
-            || javaType.typeName.startsWith("kotlin.jvm.functions.")
-            || (javaType is ParameterizedType && isFunctionType(javaType.rawType))
+                || javaType.typeName.startsWith("kotlin.jvm.functions.")
+                || (javaType is ParameterizedType && isFunctionType(javaType.rawType))
     }
 
     private fun generateDefinition(klass: KClass<*>): String {
@@ -274,13 +333,15 @@ class TypeScriptGenerator(
     // Public API:
     @Suppress("unused")
     val definitionsMap: Map<String, String>
-        get() = generatedDefinitions.toMap()
+        get() = generatedDefinitions.map {
+            it.key to generatedImports[it.key]?.joinToString("\n") + it.value.joinToString(separator = "\n\n")
+        }.toMap()
 
     @Suppress("unused")
     val definitionsText: String
-        get() = generatedDefinitions.values.joinToString("\n\n")
+        get() = generatedDefinitions.values.flatten().joinToString("\n\n")
 
     @Suppress("unused")
     val individualDefinitions: Set<String>
-        get() = generatedDefinitions.values.toSet()
+        get() = generatedDefinitions.values.flatten().toSet()
 }
