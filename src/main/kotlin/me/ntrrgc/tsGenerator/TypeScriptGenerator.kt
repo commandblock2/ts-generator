@@ -22,7 +22,6 @@ import java.lang.reflect.Type
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberProperties
-import kotlin.reflect.full.declaredMembers
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaType
 
@@ -94,11 +93,18 @@ class TypeScriptGenerator(
 
         val dependentTypes = mutableSetOf<KClass<*>>()
 
-        val definition: String
+        var definition: String
+
+        val moduleText: String by lazy {
+            dependentTypes.map {
+                val path = modules[modules.keys.find { key -> isSameClass(key, it) }]!!.path
+                "import { ${it.simpleName} } from './$path'"
+            }.joinToString("\n", postfix = "\n") + "export " + definition
+        }
+
 
         init {
             path = getFilePathForClass(klass)
-
 
             definition = generateDefinition()
         }
@@ -129,7 +135,8 @@ class TypeScriptGenerator(
                 if (existingMapping != null) {
                     return TypeScriptType.single(predefinedMappings[classifier]!!, kType.isMarkedNullable, voidType)
                 }
-                dependentTypes.add(classifier)
+                if (!shouldIgnoreSuperclass(classifier))
+                    dependentTypes.add(classifier)
             }
 
 
@@ -330,7 +337,12 @@ class TypeScriptGenerator(
                     klass,
                     it
                 )
-            } > 0 || shouldIgnoreSuperclass(klass) || modules.containsKey(klass))
+            } > 0 || shouldIgnoreSuperclass(klass) || modules.keys.find { module ->
+                isSameClass(
+                    module,
+                    klass
+                )
+            } != null)
             return
 
         val module = TypeScriptModule(klass)
@@ -347,6 +359,12 @@ class TypeScriptGenerator(
 
 
     // Public API:
+
+    @Suppress("unused")
+    val definitionsAsModules: Map<String, String>
+        get() = modules.map {
+            it.value.path to it.value.moduleText
+        }.toMap()
 
     @Suppress("unused")
     val definitionsText: String

@@ -57,6 +57,37 @@ fun assertGeneratedCode(
     actual shouldBe expected
 }
 
+fun assertGeneratedModule(
+    klass: KClass<*>,
+    expectedOutput: Map<String, String>,
+    mappings: Map<KClass<*>, String> = mapOf(),
+    classTransformers: List<ClassTransformer> = listOf(),
+    ignoreSuperclasses: Set<KClass<*>> = setOf(),
+    voidType: VoidType = VoidType.NULL
+) {
+    val generator = TypeScriptGenerator(
+        listOf(klass), mappings, classTransformers,
+        ignoreSuperclasses, intTypeName = "int", voidType = voidType
+    )
+
+    val modules = generator.definitionsAsModules
+
+    modules.keys shouldBe expectedOutput.keys
+
+
+    expectedOutput.forEach {
+
+        val generatedCode = modules[it.key]!!
+
+        val actual = generatedCode
+        val expected = it.value
+
+        actual shouldBe expected
+    }
+
+
+}
+
 class Empty
 class ClassWithMember(val a: String)
 class SimpleTypes(
@@ -684,6 +715,34 @@ interface Widget {
         values: { [key in Direction]: string };
     }
     """
+            )
+        )
+    }
+})
+
+
+class ModuleOutput : StringSpec({
+
+    // TODO: format support for the types
+    "handles Module Output" {
+        assertGeneratedModule(
+            ClassWithNestedGenericMembers::class, mapOf(
+                "me/ntrrgc/tsGenerator/tests/ClassWithNestedGenericMembers.d.ts" to
+                        """
+    import { Result } from './kotlin/Result.d.ts'
+    export interface ClassWithNestedGenericMembers {
+        xD: int[][][];
+        xDD: Result<Result<Result<int>>>;
+    }
+                """.trimIndent(),
+                "kotlin/Result.d.ts" to
+                        """
+    
+    export interface Result<T> {
+        isFailure: boolean;
+        isSuccess: boolean;
+    }
+                """.trimIndent()
             )
         )
     }
