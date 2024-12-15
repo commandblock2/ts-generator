@@ -87,11 +87,82 @@ class TypeScriptGenerator(
     // We make an assumption of the Modules WILL contain only 1 class
     // because there is no reliable way of dumping information at runtime
     // source: claude-3-5-sonnet
+    data class TypeScriptModule(
+        val klass: KClass<*>
+    ) {
+        val path: String
 
-    private val visitedClasses: MutableSet<KClass<*>> = java.util.HashSet()
+        val importedModules: Set<KClass<*>>
 
-    private val generatedDefinitions = mutableMapOf<String, List<String>>()
-    private val generatedImports = mutableMapOf<String, List<String>>()
+        val definition: String
+
+        init {
+            path = getFilePathForClass(klass)
+
+            (klass
+                // Supertypes
+                .supertypes.map { it.classifier }.asSequence() +
+
+                    klass.supertypes
+                        .map { it.classifier }
+                        .filter { it is KClass<*> }
+                        .map { (it as KClass<*>).typeParameters }.asSequence() +
+                    // Properties
+                    klass.declaredMemberProperties.asSequence() +
+                    // Functions
+                    // Types of function parameters and return value
+                    klass.declaredMembers.flatMap {
+                        it.parameters.map { param -> param.type.classifier }.asSequence() +
+                                listOf(it.returnType.classifier).asSequence()
+                        // now we need to deal with generics
+                        it.typeParameters.flatMap { typeParameter ->
+                            listOf(typeParameter).asSequence() +
+                                    typeParameter.upperBounds.map { bound -> bound.classifier }
+                        }
+                    } +
+                    // see continue-sessions/what-is-type-upper-bounds.md for why we need to include the type arguments of functions here.
+                    klass.typeParameters.flatMap {
+                        listOf(it).asSequence() +
+                                it.upperBounds.map { bound -> bound.classifier }
+                    }
+                    )
+                .filter { it is KClass<*> }
+                .also {
+                    importedModules = it.mapNotNull { (it as KClass<*>) }.toSet()
+                }
+
+            definition = generateDefinition()
+        }
+
+        private fun getFilePathForClass(klass: KClass<*>): String {
+            val packagePath = klass.java.`package`?.name?.replace('.', '/') ?: ""
+            val className = klass.simpleName
+            return if (packagePath.isEmpty()) {
+                "$className.d.ts"
+            } else {
+                "$packagePath/$className.d.ts"
+            }
+        }
+
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is TypeScriptModule) return false
+            return klass == other.klass
+        }
+
+        override fun hashCode(): Int {
+            return klass.hashCode()
+        }
+
+        fun generateDefinition(): String {
+            TODO()
+        }
+
+    }
+
+    private val modules = mutableSetOf<TypeScriptModule>()
+
     private val pipeline = ClassTransformerPipeline(classTransformers)
 
     private val ignoredSuperclasses = setOf(
@@ -114,60 +185,9 @@ class TypeScriptGenerator(
         }
     }
 
-    private fun getFilePathForClass(klass: KClass<*>): String {
-        val packagePath = klass.java.`package`?.name?.replace('.', '/') ?: ""
-        val className = klass.simpleName
-        return if (packagePath.isEmpty()) {
-            "$className.d.ts"
-        } else {
-            "$packagePath/$className.d.ts"
-        }
-    }
-
     private fun visitClass(klass: KClass<*>) {
-        if (klass in visitedClasses)
-            return
-
-        visitedClasses.add(klass)
-
-        val generatedFilePath = getFilePathForClass(klass)
-
-        // now extract all dependent types
-
-        (klass
-            // Supertypes
-            .supertypes.map { it.classifier }.asSequence() +
-                // Properties
-                klass.declaredMemberProperties.asSequence() +
-                // Functions
-                // Types of function parameters and return value
-                klass.declaredMembers.flatMap {
-                    it.parameters.map { param -> param.type.classifier }.asSequence() +
-                            listOf(it.returnType.classifier).asSequence()
-                    // now we need to deal with generics
-                    it.typeParameters.flatMap { typeParameter ->
-                        listOf(typeParameter).asSequence() +
-                                typeParameter.upperBounds.map { bound -> bound.classifier }
-                    }
-                } +
-                // see continue-sessions/what-is-type-upper-bounds.md for why we need to include the type arguments of functions here.
-                klass.typeParameters.flatMap {
-                    listOf(it).asSequence() +
-                            it.upperBounds.map { bound -> bound.classifier }
-                }
-
-
-                )
-            .filter { it is KClass<*> }
-            .also {
-                val importList = it.mapNotNull { (it as KClass<*>).simpleName }.toSet().toList()
-                generatedImports.put(
-                    generatedFilePath,
-                    generatedImports.getOrDefault(generatedFilePath, listOf()) + importList
-                )
-            }.forEach {
-                visitClass(it as KClass<*>)
-            }
+        val module = TypeScriptModule(klass)
+        module.importedModules.forEach { visitClass(it) }
     }
 
     private fun formatClassType(type: KClass<*>): String {
@@ -331,17 +351,12 @@ class TypeScriptGenerator(
     }
 
     // Public API:
-    @Suppress("unused")
-    val definitionsMap: Map<String, String>
-        get() = generatedDefinitions.map {
-            it.key to generatedImports[it.key]?.joinToString("\n") + it.value.joinToString(separator = "\n\n")
-        }.toMap()
 
     @Suppress("unused")
     val definitionsText: String
-        get() = generatedDefinitions.values.flatten().joinToString("\n\n")
+        get() = modules.map { it.definition }.joinToString("\n\n")
 
     @Suppress("unused")
     val individualDefinitions: Set<String>
-        get() = generatedDefinitions.values.flatten().toSet()
+        get() = modules.map { it.definition }.toSet()
 }
