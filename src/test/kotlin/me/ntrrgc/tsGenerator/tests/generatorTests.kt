@@ -350,7 +350,10 @@ interface ClassWithMember {
     interface ClassWithNestedGenericMembers {
         xD: int[][][];
         xDD: Result<Result<Result<int>>>;
-    }, interface Result<T> {
+    }
+    """,
+                """
+        interface Result<T> {
         isFailure: boolean;
         isSuccess: boolean;
     }
