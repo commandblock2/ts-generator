@@ -151,8 +151,14 @@ class DerivedClass(val b: List<String>) : BaseClass(4)
 class GenericDerivedClass<B>(a: Empty, b: List<B?>, c: ArrayList<String>) :
     GenericClass<Empty, B, ArrayList<String>>(a, b, c, a)
 
-class ClassWithMethods(val propertyMethod: () -> Int) {
+class ClassWithMethods(
+    val propertyMethod: () -> Int,
+    val propertyMethodReturnsMightNull: () -> Int?,
+    val propertyMethodTakesMightNull: (Int?) -> Unit
+) {
     fun regularMethod() = 4
+    fun regularMethodReturnsMightNull(): Int? = null
+    fun regularMethodTakesMightNull(x: Int?) {}
 }
 
 abstract class AbstractClass(val concreteProperty: String) {

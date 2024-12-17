@@ -17,6 +17,8 @@
 package me.ntrrgc.tsGenerator
 
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
+import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 
@@ -61,6 +63,39 @@ interface ClassTransformer {
     }
 
     /**
+     * Generates a list with the functions to include in the
+     * definition.
+     *
+     * If it returns null, the value of the next class transformer
+     * in the pipeline is used.
+     *
+     * @param functions Function list from previous stage in the pipeline,
+     * by default the public, non-function properties are chosen.
+     * @param klass Class the functions come from.
+     */
+    fun transformFunctionList(functions: List<KFunction<*>>, klass: KClass<*>): List<KFunction<*>> {
+        return functions
+    }
+
+    /**
+     * Returns the function name that will be included in the
+     * definition.
+     *
+     * If it returns null, the value of the next class transformer
+     * in the pipeline is used.
+     *
+     * @param functionName Function name generated in previous transformers
+     * in the pipeline, by default the original function name.
+     * @param function The actual function of the class.
+     * @param klass Class the function comes from.
+     */
+
+
+    fun transformFunctionName(functionName: String, function: KFunction<*>, klass: KClass<*>): String {
+        return functionName
+    }
+
+    /**
      * Returns the property type that will be processed and included
      * in the definition.
      *
@@ -70,6 +105,28 @@ interface ClassTransformer {
      * @param klass Class the property comes from.
      */
     fun transformPropertyType(type: KType, property: KProperty<*>, klass: KClass<*>): KType {
+        return type
+    }
+
+    /**
+     * Returns the function type that will be processed and included
+     * in the definition.
+     *
+     * @param type Type coming from previous stages of the pipeline,
+     * by default the actual type of the property.
+     * @param function The actual property of the class.
+     * @param klass Class the property comes from.
+     */
+    fun transformFunctionReturnType(type: KType, function: KFunction<*>, klass: KClass<*>): KType {
+        return type
+    }
+
+    fun transformFunctionParameterType(
+        type: KType,
+        parameter: KParameter,
+        function: KFunction<*>,
+        klass: KClass<*>
+    ): KType {
         return type
     }
 }
