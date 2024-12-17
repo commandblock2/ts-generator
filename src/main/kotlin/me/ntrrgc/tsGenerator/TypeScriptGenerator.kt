@@ -226,6 +226,13 @@ class TypeScriptGenerator(
         private fun generateInterface(klass: KClass<*>): String {
             val supertypes = klass.supertypes
                 .filterNot { it.classifier in ignoredSuperclasses }
+                .filter {
+                    if (it.classifier is KClass<*>) !isSameClass(
+                        it.classifier as KClass<*>,
+                        Any::class
+                    ) else true
+                }
+
             val extendsString = if (supertypes.isNotEmpty()) {
                 " extends " + supertypes
                     .map { formatKType(it).formatWithoutParenthesis() }
@@ -284,12 +291,7 @@ class TypeScriptGenerator(
 
     private val pipeline = ClassTransformerPipeline(classTransformers)
 
-    private val ignoredSuperclasses = setOf(
-        Any::class,
-        java.io.Serializable::class,
-        Comparable::class,
-        Unit::class,
-        Enum::class,
+    private val ignoredSuperclasses = setOf<KClass<*>>(
     ).plus(ignoreSuperclasses)
 
     private val predefinedMappings =
