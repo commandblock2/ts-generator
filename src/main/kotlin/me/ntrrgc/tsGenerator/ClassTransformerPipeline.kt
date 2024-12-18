@@ -17,6 +17,7 @@
 package me.ntrrgc.tsGenerator
 
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 
@@ -26,12 +27,20 @@ import kotlin.reflect.KType
  * For each method the return value of the first transformer
  * to return not null is used.
  */
-internal class ClassTransformerPipeline(val memberTransformers: List<ClassTransformer>): ClassTransformer {
+internal class ClassTransformerPipeline(val memberTransformers: List<ClassTransformer>) : ClassTransformer {
 
     override fun transformPropertyList(properties: List<KProperty<*>>, klass: KClass<*>): List<KProperty<*>> {
         var ret = properties
         memberTransformers.forEach { transformer ->
             ret = transformer.transformPropertyList(ret, klass)
+        }
+        return ret
+    }
+
+    override fun transformFunctionList(functions: List<KFunction<*>>, klass: KClass<*>): List<KFunction<*>> {
+        var ret = functions
+        memberTransformers.forEach { transformer ->
+            ret = transformer.transformFunctionList(ret, klass)
         }
         return ret
     }
