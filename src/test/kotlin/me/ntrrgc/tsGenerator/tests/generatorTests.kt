@@ -58,7 +58,7 @@ fun assertGeneratedCode(
         .map(TypeScriptDefinitionFactory::fromCode)
         .toSet()
 
-    actual.toList() shouldContainExactlyInAnyOrder expected.toList()
+    actual shouldBe expected
 }
 
 fun assertGeneratedModule(
