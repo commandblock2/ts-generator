@@ -92,7 +92,7 @@ class TypeScriptGenerator(
     ) {
         val path: String
 
-        val dependentTypes = mutableSetOf<KClass<*>>()
+        val dependentTypes = mutableSetOf<KClass<*>>(Any::class)
 
         var definition: String
 
