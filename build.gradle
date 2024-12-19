@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-group  'com.github.commandblock2'
+group 'com.github.commandblock2'
 version '1.2.18'
 
 buildscript {
@@ -48,6 +48,7 @@ repositories {
 }
 
 test {
+    jvmArgs '-Dkotest.assertions.collection.print.size=1024'
     useJUnitPlatform()
 }
 

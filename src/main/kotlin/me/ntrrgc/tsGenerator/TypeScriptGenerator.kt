@@ -21,6 +21,7 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaType
@@ -91,7 +92,7 @@ class TypeScriptGenerator(
     ) {
         val path: String
 
-        val dependentTypes = mutableSetOf<KClass<*>>()
+        val dependentTypes = mutableSetOf<KClass<*>>(Any::class)
 
         var definition: String
 
@@ -226,6 +227,13 @@ class TypeScriptGenerator(
         private fun generateInterface(klass: KClass<*>): String {
             val supertypes = klass.supertypes
                 .filterNot { it.classifier in ignoredSuperclasses }
+                .filter {
+                    if (it.classifier is KClass<*>) !isSameClass(
+                        it.classifier as KClass<*>,
+                        Any::class
+                    ) else true
+                }
+
             val extendsString = if (supertypes.isNotEmpty()) {
                 " extends " + supertypes
                     .map { formatKType(it).formatWithoutParenthesis() }
@@ -253,29 +261,72 @@ class TypeScriptGenerator(
             }
 
             return "interface ${klass.simpleName}$templateParameters$extendsString {\n" +
-                    klass.declaredMemberProperties
-                        .filter {
-                            try {
-                                !isFunctionType(it.returnType.javaType)
-                            } catch (_: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
-                                false
-                            }
-                        }
-                        .filter {
-                            it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
-                        }
-                        .let { propertyList ->
-                            pipeline.transformPropertyList(propertyList, klass)
-                        }
-                        .map { property ->
-                            val propertyName = pipeline.transformPropertyName(property.name, property, klass)
-                            val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
-
-                            val formattedPropertyType = formatKType(propertyType).formatWithoutParenthesis()
-                            "    $propertyName: $formattedPropertyType;\n"
-                        }
-                        .joinToString("") +
+                    propertiesOf(klass) +
+                    functionsOf(klass) +
                     "}"
+        }
+
+        private fun functionsOf(klass: KClass<*>): String = try {
+            klass.declaredMemberFunctions
+                .filter { it.visibility == KVisibility.PUBLIC }
+                .let { functionsList ->
+                    pipeline.transformFunctionList(functionsList, klass)
+                }.map { function ->
+                    val functionName = pipeline.transformFunctionName(function.name, function, klass)
+                    val returnType = pipeline.transformFunctionReturnType(function.returnType, function, klass)
+                    val parameters = function.parameters
+                        .drop(1)
+                        .joinToString(", ") { param ->
+                            val paramType = pipeline.transformFunctionParameterType(param.type, param, function, klass)
+                            "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+
+                        }
+                    val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
+                    "    $functionName($parameters): $formattedReturnType;\n"
+                }.joinToString("")
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
+
+
+        private fun propertiesOf(klass: KClass<*>): String = try {
+            klass.declaredMemberProperties
+                .filter {
+                    it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
+                }
+                .let { propertyList ->
+                    pipeline.transformPropertyList(propertyList, klass)
+                }
+                .map { property ->
+                    val propertyName = pipeline.transformPropertyName(property.name, property, klass)
+                    val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
+
+                    val formattedPropertyType = if (isFunctionType(property.returnType.javaType))
+                        formatPropertyFunctionType(propertyType)
+                    else
+                        formatKType(propertyType).formatWithoutParenthesis()
+                    "    $propertyName: $formattedPropertyType;\n"
+                }
+                .joinToString("")
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
+
+
+        private fun formatPropertyFunctionType(type: KType): String {
+            val arguments = type.arguments.dropLast(1) // Drop the return type
+            val returnType =
+                type.arguments.lastOrNull()?.type?.let { formatKType(it).formatWithoutParenthesis() } ?: "void"
+
+            val parameters = arguments.mapIndexed { index, arg ->
+                val paramType = formatKType(arg.type ?: return@mapIndexed "any")
+                "param$index: ${paramType.formatWithoutParenthesis()}"
+            }.joinToString(", ")
+
+            // Return the TypeScript function type
+            return "($parameters) => $returnType"
         }
 
     }
@@ -284,12 +335,7 @@ class TypeScriptGenerator(
 
     private val pipeline = ClassTransformerPipeline(classTransformers)
 
-    private val ignoredSuperclasses = setOf(
-        Any::class,
-        java.io.Serializable::class,
-        Comparable::class,
-        Unit::class,
-        Enum::class,
+    private val ignoredSuperclasses = setOf<KClass<*>>(
     ).plus(ignoreSuperclasses)
 
     private val predefinedMappings =

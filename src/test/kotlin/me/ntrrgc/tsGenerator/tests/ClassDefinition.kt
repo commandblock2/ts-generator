@@ -16,7 +16,7 @@
 
 package me.ntrrgc.tsGenerator.tests
 
-class ClassDefinition(tsCode: String): Comparable<ClassDefinition>, TypeScriptDefinition {
+class ClassDefinition(tsCode: String) : Comparable<ClassDefinition>, TypeScriptDefinition {
     val lines = tsCode.trim()
         .split("\n")
         .map(String::trim)
@@ -48,12 +48,12 @@ class ClassDefinition(tsCode: String): Comparable<ClassDefinition>, TypeScriptDe
      * if it's greater than [other].
      */
     override fun compareTo(other: ClassDefinition): Int {
-        if (this == other) {
-            return 0
+        return if (this == other) {
+            0
         } else if (this.lines.first() < other.lines.first()) {
-            return -1
+            -1
         } else {
-            return 1
+            1
         }
     }
 
@@ -63,6 +63,6 @@ class ClassDefinition(tsCode: String): Comparable<ClassDefinition>, TypeScriptDe
     }
 
     override fun hashCode(): Int {
-        return this.lines.hashCode()
+        return this.toString().hashCode()
     }
 }
