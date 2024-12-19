@@ -36,7 +36,14 @@ fun assertGeneratedCode(
     mappings: Map<KClass<*>, String> = mapOf(),
     classTransformers: List<ClassTransformer> = listOf(),
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
-    voidType: VoidType = VoidType.NULL
+    voidType: VoidType = VoidType.NULL,
+    any: String = """
+            interface Any {
+                equals(other: any): boolean;
+                hashCode(): int;
+                toString(): string;
+            }
+        """
 ) {
     val generator = TypeScriptGenerator(
         listOf(klass), mappings, classTransformers,
@@ -44,13 +51,7 @@ fun assertGeneratedCode(
     )
 
     val expected = expectedOutput.plus(
-        """
-            interface Any {
-                equals(other: any): boolean;
-                hashCode(): int;
-                toString(): string;
-            }
-        """
+        any
     )
         .map(TypeScriptDefinitionFactory::fromCode)
         .toSet()
@@ -507,7 +508,13 @@ interface ClassWithDependencies {
         toString(): CustomString;
     }
     """
-            ), mappings = mapOf(String::class to "CustomString")
+            ), mappings = mapOf(String::class to "CustomString"), any = """
+            interface Any {
+                equals(other: any): boolean;
+                hashCode(): int;
+                toString(): CustomString;
+            }
+        """
         )
     }
 

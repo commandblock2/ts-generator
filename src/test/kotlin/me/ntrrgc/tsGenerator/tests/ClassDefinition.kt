@@ -63,6 +63,6 @@ class ClassDefinition(tsCode: String) : Comparable<ClassDefinition>, TypeScriptD
     }
 
     override fun hashCode(): Int {
-        return this.lines.hashCode()
+        return this.toString().hashCode()
     }
 }
