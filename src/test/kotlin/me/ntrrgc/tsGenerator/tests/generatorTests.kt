@@ -17,7 +17,6 @@
 package me.ntrrgc.tsGenerator.tests
 
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import me.ntrrgc.tsGenerator.ClassTransformer
 import me.ntrrgc.tsGenerator.TypeScriptGenerator
@@ -164,6 +163,19 @@ class ClassWithMethods(
     fun regularMethod() = 4
     fun regularMethodReturnsMightNull(): Int? = null
     fun regularMethodTakesMightNull(x: Int?) {}
+}
+
+class ClassWithMethodsThatReturnsOrTakesFunctionalType(
+    val propertyMethodReturnsLambda: () -> (() -> Int),
+    val propertyMethodReturnsLambdaMightNull: () -> (() -> Int)?,
+    val propertyMethodTakesLambdaMightNull: ((() -> Int)?) -> Unit,
+) {
+    fun regularMethod() = propertyMethodReturnsLambda
+    fun regularMethodReturnsRegularMethod() =
+        ClassWithMethodsThatReturnsOrTakesFunctionalType::regularMethod
+
+    fun regularMethodThatReturnsLambdaMightNull() = null
+    fun regularMethodTakesLambdaReturnsMightNull(x: () -> Int?) {}
 }
 
 abstract class AbstractClass(val concreteProperty: String) {
@@ -425,6 +437,111 @@ interface ClassWithMember {
             )
         )
     }
+
+    "handles ClassWithMethodsThatReturnsOrTakesFunctionalType" {
+        assertGeneratedCode(
+            ClassWithMethodsThatReturnsOrTakesFunctionalType::class, setOf(
+                """
+                    interface ClassWithMethodsThatReturnsOrTakesFunctionalType {
+                        propertyMethodReturnsLambda: () => Function0<int>;
+                        propertyMethodReturnsLambdaMightNull: () => Function0<int> | null;
+                        propertyMethodTakesLambdaMightNull: (param0: Function0<int> | null) => Unit;
+                        regularMethod(): Function0<Function0<int>>;
+                        regularMethodReturnsRegularMethod(): KFunction<ClassWithMethodsThatReturnsOrTakesFunctionalType, Function0<Function0<int>>>;
+                        regularMethodTakesLambdaReturnsMightNull(x: Function0<int | null>): Unit;
+                        regularMethodThatReturnsLambdaMightNull(): Void | null;
+                    }
+                """, """
+                    interface Any {
+                        equals(other: any): boolean;
+                        hashCode(): int;
+                        toString(): string;
+                    }
+                """, """
+                    interface Function0<R> extends Function<R> {
+                    }
+                """, """
+                    interface Function<R> {
+                    }
+                """, unit, """
+                    interface KFunction<R> extends KCallable<R>, Function<R> {
+                        isExternal: boolean;
+                        isInfix: boolean;
+                        isInline: boolean;
+                        isOperator: boolean;
+                        isSuspend: boolean;
+                    }
+                """, """
+                    interface KCallable<R> extends KAnnotatedElement {
+                        call(args: any[]): R;
+                        callBy(args: { [key: KParameter]: any }): R;
+                        isAbstract: boolean;
+                        isFinal: boolean;
+                        isOpen: boolean;
+                        isSuspend: boolean;
+                        name: string;
+                        parameters: KParameter[];
+                        returnType: KType;
+                        typeParameters: KTypeParameter[];
+                        visibility: KVisibility | null;
+                    }
+                """, """
+                    interface KAnnotatedElement {
+                        annotations: Annotation[];
+                    }
+                """, """
+                    interface Annotation {
+                    }
+                """, """
+                    interface KParameter extends KAnnotatedElement {
+                        index: int;
+                        isOptional: boolean;
+                        isVararg: boolean;
+                        kind: Kind;
+                        name: string | null;
+                        type: KType;
+                    }
+                """, """
+                    type Kind = "INSTANCE" | "EXTENSION_RECEIVER" | "VALUE";
+                """, """
+                    interface KType extends KAnnotatedElement {
+                        arguments: KTypeProjection[];
+                        classifier: KClassifier | null;
+                        isMarkedNullable: boolean;
+                    }
+                """, """
+                    interface KTypeProjection {
+                        component1(): KVariance | null;
+                        component2(): KType | null;
+                        copy(variance: KVariance | null, type: KType | null): KTypeProjection;
+                        equals(other: any): boolean;
+                        hashCode(): int;
+                        toString(): string;
+                        type: KType | null;
+                        variance: KVariance | null;
+                    }
+                """, """
+                    type KVariance = "INVARIANT" | "IN" | "OUT";
+                """, """
+                    interface KClassifier {
+                    }
+                """, """
+                    interface KTypeParameter extends KClassifier {
+                        isReified: boolean;
+                        name: string;
+                        upperBounds: KType[];
+                        variance: KVariance;
+                    }
+                """, """
+                    type KVisibility = "PUBLIC" | "PROTECTED" | "INTERNAL" | "PRIVATE";
+                """, """
+                    interface Void {
+                    }
+                """
+            )
+        )
+    }
+
 
     "handles AbstractClass" {
         assertGeneratedCode(

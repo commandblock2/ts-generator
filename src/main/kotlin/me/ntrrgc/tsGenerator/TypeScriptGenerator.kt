@@ -266,42 +266,53 @@ class TypeScriptGenerator(
                     "}"
         }
 
-        private fun functionsOf(klass: KClass<*>): String = klass.declaredMemberFunctions
-            .filter { it.visibility == KVisibility.PUBLIC }
-            .let { functionsList ->
-                pipeline.transformFunctionList(functionsList, klass)
-            }.map { function ->
-                val functionName = pipeline.transformFunctionName(function.name, function, klass)
-                val returnType = pipeline.transformFunctionReturnType(function.returnType, function, klass)
-                val parameters = function.parameters
-                    .drop(1)
-                    .joinToString(", ") { param ->
-                        val paramType = pipeline.transformFunctionParameterType(param.type, param, function, klass)
-                        "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+        private fun functionsOf(klass: KClass<*>): String = try {
+            klass.declaredMemberFunctions
+                .filter { it.visibility == KVisibility.PUBLIC }
+                .let { functionsList ->
+                    pipeline.transformFunctionList(functionsList, klass)
+                }.map { function ->
+                    val functionName = pipeline.transformFunctionName(function.name, function, klass)
+                    val returnType = pipeline.transformFunctionReturnType(function.returnType, function, klass)
+                    val parameters = function.parameters
+                        .drop(1)
+                        .joinToString(", ") { param ->
+                            val paramType = pipeline.transformFunctionParameterType(param.type, param, function, klass)
+                            "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
 
-                    }
-                val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
-                "    $functionName($parameters): $formattedReturnType;\n"
-            }.joinToString("")
+                        }
+                    val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
+                    "    $functionName($parameters): $formattedReturnType;\n"
+                }.joinToString("")
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
 
-        private fun propertiesOf(klass: KClass<*>): String = klass.declaredMemberProperties
-            .filter {
-                it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
-            }
-            .let { propertyList ->
-                pipeline.transformPropertyList(propertyList, klass)
-            }
-            .map { property ->
-                val propertyName = pipeline.transformPropertyName(property.name, property, klass)
-                val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
 
-                val formattedPropertyType = if (isFunctionType(property.returnType.javaType))
-                    formatPropertyFunctionType(propertyType)
-                else
-                    formatKType(propertyType).formatWithoutParenthesis()
-                "    $propertyName: $formattedPropertyType;\n"
-            }
-            .joinToString("")
+        private fun propertiesOf(klass: KClass<*>): String = try {
+            klass.declaredMemberProperties
+                .filter {
+                    it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
+                }
+                .let { propertyList ->
+                    pipeline.transformPropertyList(propertyList, klass)
+                }
+                .map { property ->
+                    val propertyName = pipeline.transformPropertyName(property.name, property, klass)
+                    val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
+
+                    val formattedPropertyType = if (isFunctionType(property.returnType.javaType))
+                        formatPropertyFunctionType(propertyType)
+                    else
+                        formatKType(propertyType).formatWithoutParenthesis()
+                    "    $propertyName: $formattedPropertyType;\n"
+                }
+                .joinToString("")
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
 
 
         private fun formatPropertyFunctionType(type: KType): String {
