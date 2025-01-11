@@ -97,10 +97,10 @@ class TypeScriptGenerator(
         var definition: String
 
         val moduleText: String by lazy {
-            dependentTypes.map {
+            dependentTypes.joinToString("\n", postfix = "\n") {
                 val path = modules[modules.keys.find { key -> isSameClass(key, it) }]!!.path
                 "import { ${it.simpleName} } from './$path'"
-            }.joinToString("\n", postfix = "\n") + "export " + definition
+            } + "export " + definition
         }
 
 
@@ -165,9 +165,11 @@ class TypeScriptGenerator(
         private fun nonPrimitiveFromKType(kType: KType): String =
             // Use class name, with or without template parameters
             (kType.classifier as KClass<*>).simpleName!! + if (kType.arguments.isNotEmpty()) {
-                "<" + kType.arguments
-                    .map { arg -> formatKType(arg.type ?: KotlinAnyOrNull).formatWithoutParenthesis() }
-                    .joinToString(", ") + ">"
+                "<" + kType.arguments.joinToString(", ") { arg ->
+                    formatKType(
+                        arg.type ?: KotlinAnyOrNull
+                    ).formatWithoutParenthesis()
+                } + ">"
             } else ""
 
         private fun getIterableElementType(kType: KType): KType? {
@@ -216,11 +218,9 @@ class TypeScriptGenerator(
 
         private fun generateEnum(klass: KClass<*>): String {
             return "type ${klass.simpleName} = ${
-                klass.java.enumConstants
-                    .map { constant: Any ->
-                        constant.toString().toJSString()
-                    }
-                    .joinToString(" | ")
+                klass.java.enumConstants.joinToString(" | ") { constant: Any ->
+                    constant.toString().toJSString()
+                }
             };"
         }
 
@@ -235,27 +235,21 @@ class TypeScriptGenerator(
                 }
 
             val extendsString = if (supertypes.isNotEmpty()) {
-                " extends " + supertypes
-                    .map { formatKType(it).formatWithoutParenthesis() }
-                    .joinToString(", ")
+                " extends " + supertypes.joinToString(", ") { formatKType(it).formatWithoutParenthesis() }
             } else ""
 
             val templateParameters = if (klass.typeParameters.isNotEmpty()) {
-                "<" + klass.typeParameters
-                    .map { typeParameter ->
-                        val bounds = typeParameter.upperBounds
-                            .filter { it.classifier != Any::class }
-                        typeParameter.name + if (bounds.isNotEmpty()) {
-                            " extends " + bounds
-                                .map { bound ->
-                                    formatKType(bound).formatWithoutParenthesis()
-                                }
-                                .joinToString(" & ")
-                        } else {
-                            ""
+                "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
+                    val bounds = typeParameter.upperBounds
+                        .filter { it.classifier != Any::class }
+                    typeParameter.name + if (bounds.isNotEmpty()) {
+                        " extends " + bounds.joinToString(" & ") { bound ->
+                            formatKType(bound).formatWithoutParenthesis()
                         }
+                    } else {
+                        ""
                     }
-                    .joinToString(", ") + ">"
+                } + ">"
             } else {
                 ""
             }
@@ -271,7 +265,7 @@ class TypeScriptGenerator(
                 .filter { it.visibility == KVisibility.PUBLIC }
                 .let { functionsList ->
                     pipeline.transformFunctionList(functionsList, klass)
-                }.map { function ->
+                }.joinToString("") { function ->
                     val functionName = pipeline.transformFunctionName(function.name, function, klass)
                     val returnType = pipeline.transformFunctionReturnType(function.returnType, function, klass)
                     val parameters = function.parameters
@@ -283,7 +277,7 @@ class TypeScriptGenerator(
                         }
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
                     "    $functionName($parameters): $formattedReturnType;\n"
-                }.joinToString("")
+                }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
@@ -297,8 +291,7 @@ class TypeScriptGenerator(
                 }
                 .let { propertyList ->
                     pipeline.transformPropertyList(propertyList, klass)
-                }
-                .map { property ->
+                }.joinToString("") { property ->
                     val propertyName = pipeline.transformPropertyName(property.name, property, klass)
                     val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
 
@@ -308,7 +301,6 @@ class TypeScriptGenerator(
                         formatKType(propertyType).formatWithoutParenthesis()
                     "    $propertyName: $formattedPropertyType;\n"
                 }
-                .joinToString("")
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
