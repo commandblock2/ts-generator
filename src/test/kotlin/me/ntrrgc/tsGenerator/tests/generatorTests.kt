@@ -204,9 +204,10 @@ class ClassWithMethodsThatReturnsOrTakesFunctionalType(
 }
 
 @Suppress("unused")
-abstract class AbstractClass(val concreteProperty: String) {
-    abstract val abstractProperty: Int
+abstract class AbstractClass(val concreteKotlinProperty: String) {
+    abstract val abstractKotlinProperty: Int
     abstract fun abstractMethod()
+    fun concreteMethodInAbstractClass() = 4
 }
 
 
@@ -511,8 +512,8 @@ class ClassWithMember {
                     }
                 """, """
                     interface KCallable<R> extends KAnnotatedElement {
-                        call(args: any[]): R;
-                        callBy(args: { [key: KParameter]: any }): R;
+                        abstract call(args: any[]): R;
+                        abstract callBy(args: { [key: KParameter]: any }): R;
                         isAbstract: boolean;
                         isFinal: boolean;
                         isOpen: boolean;
@@ -586,9 +587,10 @@ class ClassWithMember {
             AbstractClass::class, setOf(
                 """
     abstract class AbstractClass {
-        abstractMethod(): Unit;
-        concreteProperty: string;
-        abstractProperty: int;
+        abstract abstractMethod(): Unit;
+        abstractKotlinProperty: int;
+        concreteKotlinProperty: string;
+        concreteMethodInAbstractClass(): int;
     }
     """, unit
             )
