@@ -254,7 +254,15 @@ class TypeScriptGenerator(
                 ""
             }
 
-            return "interface ${klass.simpleName}$templateParameters$extendsString {\n" +
+
+            val typeKeyword = when {
+                klass.java.isInterface -> "interface"
+                klass.isAbstract -> "abstract class"
+                else -> "class"
+            }
+
+
+            return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString {\n" +
                     propertiesOf(klass) +
                     functionsOf(klass) +
                     "}"
@@ -275,8 +283,9 @@ class TypeScriptGenerator(
                             "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
 
                         }
+                    val abstractSpecifier = if (function.isAbstract) "abstract " else ""
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
-                    "    $functionName($parameters): $formattedReturnType;\n"
+                    "    $abstractSpecifier$functionName($parameters): $formattedReturnType;\n"
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())

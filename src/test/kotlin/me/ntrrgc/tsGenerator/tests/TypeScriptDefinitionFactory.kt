@@ -20,12 +20,10 @@ object TypeScriptDefinitionFactory {
     fun fromCode(tsCode: String): TypeScriptDefinition {
         val code = tsCode.trim()
 
-        return if (code.startsWith("interface")) {
-            ClassDefinition(code)
-        } else if (code.startsWith("type")) {
+        return if (code.startsWith("type")) {
             EnumDefinition(code)
         } else {
-            throw RuntimeException("Unknown definition type: $code")
+            ClassDefinition(code)
         }
     }
 }
