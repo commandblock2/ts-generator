@@ -254,7 +254,15 @@ class TypeScriptGenerator(
                 ""
             }
 
-            return "interface ${klass.simpleName}$templateParameters$extendsString {\n" +
+
+            val typeKeyword = when {
+                klass.java.isInterface -> "interface"
+                klass.isAbstract -> "abstract class"
+                else -> "class"
+            }
+
+
+            return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString {\n" +
                     propertiesOf(klass) +
                     functionsOf(klass) +
                     "}"
