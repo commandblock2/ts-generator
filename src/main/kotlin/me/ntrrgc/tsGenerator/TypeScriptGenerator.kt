@@ -92,25 +92,31 @@ class TypeScriptGenerator(
     ) {
         val path: String
 
-        val dependentTypes = mutableSetOf<KClass<*>>(Any::class)
+        val dependentTypes = mutableSetOf<KClass<*>>()
 
         var definition: String
 
         val moduleText: String by lazy {
+            val depth = path.count { it == '/' }
+
             dependentTypes.joinToString("\n", postfix = "\n") {
-                val path = modules[modules.keys.find { key -> isSameClass(key, it) }]!!.path
-                "import { ${it.simpleName} } from './$path'"
+                val importPath = modules[modules.keys.find { key -> isSameClass(key, it) }]!!.path
+
+                val upLevels = "../".repeat(depth)
+                val downPath = importPath.removePrefix("/")
+
+                "import type { ${it.simpleName} } from '$upLevels$downPath'"
             } + "export " + definition
         }
 
 
         init {
-            path = getFilePathForClass(klass)
+            path = getFilePathForClassWithoutExtension(klass)
 
             definition = generateDefinition()
         }
 
-        private fun getFilePathForClass(klass: KClass<*>): String {
+        private fun getFilePathForClassWithoutExtension(klass: KClass<*>): String {
             val packagePath = klass.java.`package`?.name?.replace('.', '/') ?: ""
             val className = klass.simpleName
             return if (packagePath.isEmpty()) {
@@ -136,7 +142,7 @@ class TypeScriptGenerator(
                 if (existingMapping != null) {
                     return TypeScriptType.single(predefinedMappings[classifier]!!, kType.isMarkedNullable, voidType)
                 }
-                if (!shouldIgnoreSuperclass(classifier))
+                if (!shouldIgnoreSuperclass(classifier) && !isSameClass(classifier, klass))
                     dependentTypes.add(classifier)
             }
 
@@ -227,12 +233,6 @@ class TypeScriptGenerator(
         private fun generateInterface(klass: KClass<*>): String {
             val supertypes = klass.supertypes
                 .filterNot { it.classifier in ignoredSuperclasses }
-                .filter {
-                    if (it.classifier is KClass<*>) !isSameClass(
-                        it.classifier as KClass<*>,
-                        Any::class
-                    ) else true
-                }
 
             val extendsString = if (supertypes.isNotEmpty()) {
                 " extends " + supertypes.joinToString(", ") { formatKType(it).formatWithoutParenthesis() }
@@ -241,7 +241,6 @@ class TypeScriptGenerator(
             val templateParameters = if (klass.typeParameters.isNotEmpty()) {
                 "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
                     val bounds = typeParameter.upperBounds
-                        .filter { it.classifier != Any::class }
                     typeParameter.name + if (bounds.isNotEmpty()) {
                         " extends " + bounds.joinToString(" & ") { bound ->
                             formatKType(bound).formatWithoutParenthesis()
@@ -283,9 +282,8 @@ class TypeScriptGenerator(
                             "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
 
                         }
-                    val abstractSpecifier = if (function.isAbstract) "abstract " else ""
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
-                    "    $abstractSpecifier$functionName($parameters): $formattedReturnType;\n"
+                    "    $functionName($parameters): $formattedReturnType;\n"
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -353,8 +351,7 @@ class TypeScriptGenerator(
             Float::class to "number",
             Double::class to "number",
 
-            Any::class to "any"
-        ).plus(mappings) // mappings has a higher priority
+            ).plus(mappings) // mappings has a higher priority
 
     private val shouldIgnoreSuperclass: (KClass<*>) -> Boolean = { klass: KClass<*> ->
         klass.isSubclassOf(Iterable::class) || klass.javaObjectType.isArray || klass.isSubclassOf(Map::class)
