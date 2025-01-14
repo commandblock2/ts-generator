@@ -168,15 +168,38 @@ class TypeScriptGenerator(
             return TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType)
         }
 
-        private fun nonPrimitiveFromKType(kType: KType): String =
-            // Use class name, with or without template parameters
-            (kType.classifier as KClass<*>).simpleName!! + if (kType.arguments.isNotEmpty()) {
+        private fun nonPrimitiveFromKType(kType: KType): String {
+            val kClass = kType.classifier as KClass<*>
+            val simpleName = kClass.simpleName!!
+
+            // If the counts don't match, this might indicate a specialized type
+            // This is actually infuriating and fucking frustrating that Kotlin does not fucking
+            // provided a well-defined way of getting the actual type of specialized class
+
+            // Example: your kType evaluates to
+            // kotlin.reflect.KFunction1<me.ntrrgc.tsGenerator.tests.ClassWithMethodsThatReturnsOrTakesFunctionalType, () -> () -> kotlin.Int>
+            // in debugger and kType.classifier evaluates to class kotlin.reflect.KFunction (not the KFunction1)
+            // but you can see there is definitely no way of acquiring the actual type with proper API
+            // would you rather rely on .toString() and parse it and rely on the alternative shitty hack?
+            // place the breakpoint and see for yourself
+            if (kType.arguments.size != kClass.typeParameters.size) {
+                return simpleName + if (kClass.typeParameters.isNotEmpty()) "<${
+                    (1..kClass.typeParameters.size).joinToString(
+                        ", "
+                    ) { "Any" }
+                }>" else ""
+            }
+
+            // Only add generic parameters if counts match
+            return simpleName + if (kType.arguments.isNotEmpty()) {
                 "<" + kType.arguments.joinToString(", ") { arg ->
                     formatKType(
                         arg.type ?: KotlinAnyOrNull
                     ).formatWithoutParenthesis()
                 } + ">"
             } else ""
+        }
+
 
         private fun getIterableElementType(kType: KType): KType? {
             // Traverse supertypes to find `Iterable<T>`
