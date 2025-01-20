@@ -40,7 +40,7 @@ fun assertGeneratedCode(
     voidType: VoidType = VoidType.NULL,
     any: String = """
             class Any {
-                equals(other: any): boolean;
+                equals(other: Any | null): boolean;
                 hashCode(): int;
                 toString(): string;
             }
@@ -235,7 +235,7 @@ class Tests : StringSpec({
         assertGeneratedCode(
             Empty::class, setOf(
                 """
-class Empty {
+class Empty extends Any {
 }
 """
             )
@@ -246,7 +246,7 @@ class Empty {
         assertGeneratedCode(
             ClassWithMember::class, setOf(
                 """
-class ClassWithMember {
+class ClassWithMember extends Any {
     a: string;
 }
 """
@@ -258,7 +258,7 @@ class ClassWithMember {
         assertGeneratedCode(
             SimpleTypes::class, setOf(
                 """
-    class SimpleTypes {
+    class SimpleTypes extends Any {
         aString: string;
         anInt: int;
         aDouble: number;
@@ -272,7 +272,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithLists::class, setOf(
                 """
-    class ClassWithLists {
+    class ClassWithLists extends Any {
         aList: string[];
         anArrayList: string[];
     }
@@ -285,7 +285,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithArray::class, setOf(
                 """
-    class ClassWithArray {
+    class ClassWithArray extends Any {
         items: string[];
     }
     """
@@ -294,14 +294,14 @@ class ClassWithMember {
     }
 
     val widget = """
-    class Widget {
+    class Widget extends Any {
         name: string;
         value: int;
     }
     """
 
     val classWithDependencies = """
-    class ClassWithDependencies {
+    class ClassWithDependencies extends Any {
         widget: Widget;
     }
     """
@@ -314,7 +314,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithNestedDependencies::class, setOf(
                 """
-    class ClassWithNestedDependencies {
+    class ClassWithNestedDependencies extends Any {
         classWithDependencies: ClassWithDependencies;
         widget: Widget;
     }
@@ -327,7 +327,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithNullables::class, setOf(
                 """
-    class ClassWithNullables {
+    class ClassWithNullables extends Any {
         widget: Widget | null;
     }
     """, widget
@@ -339,7 +339,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithMixedNullables::class, setOf(
                 """
-    class ClassWithMixedNullables {
+    class ClassWithMixedNullables extends Any {
         count: int;
         time: string | null;
     }
@@ -352,12 +352,19 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithMixedNullables::class, setOf(
                 """
-    class ClassWithMixedNullables {
+    class ClassWithMixedNullables extends Any {
         count: int;
         time: string | undefined;
     }
     """
-            ), mappings = mapOf(Instant::class to "string"), voidType = VoidType.UNDEFINED
+            ), mappings = mapOf(Instant::class to "string"), voidType = VoidType.UNDEFINED,
+            any = """
+    class Any {
+        equals(other: Any | undefined): boolean;
+        hashCode(): int;
+        toString(): string;
+    }
+            """.trimIndent()
         )
     }
 
@@ -365,7 +372,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithComplexNullables::class, setOf(
                 """
-    class ClassWithComplexNullables {
+    class ClassWithComplexNullables extends Any {
         maybeWidgets: (string | null)[] | null;
         maybeWidgetsArray: (string | null)[] | null;
     }
@@ -378,7 +385,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithNullableList::class, setOf(
                 """
-    class ClassWithNullableList {
+    class ClassWithNullableList extends Any {
         strings: string[] | null;
     }
     """
@@ -390,7 +397,7 @@ class ClassWithMember {
         assertGeneratedCode(
             GenericClass::class, setOf(
                 """
-    class GenericClass<A, B, C extends any[]> {
+    class GenericClass<A extends Any | null, B extends Any | null, C extends Any[]> extends Any {
         a: A;
         b: (B | null)[];
         c: C;
@@ -401,7 +408,7 @@ class ClassWithMember {
     }
 
     val unit = """
-    class Unit {
+    class Unit extends Any {
         toString(): string;
     }
     """
@@ -427,7 +434,7 @@ class ClassWithMember {
         b: string[];
     }
     """, """
-    class BaseClass {
+    class BaseClass extends Any {
         a: int;
     }
     """
@@ -439,16 +446,16 @@ class ClassWithMember {
         assertGeneratedCode(
             GenericDerivedClass::class, setOf(
                 """
-    class GenericClass<A, B, C extends any[]> {
+    class GenericClass<A extends Any | null, B extends Any | null, C extends Any[]> {
         a: A;
         b: (B | null)[];
         c: C;
     }
     """, """
-    class Empty {
+    class GenericDerivedClass<B extends Any | null> extends GenericClass<Empty, B, string[]> {
     }
     """, """
-    class GenericDerivedClass<B> extends GenericClass<Empty, B, string[]> {
+    class Empty extends Any {
     }
     """
             )
@@ -459,7 +466,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithMethods::class, setOf(
                 """
-    class ClassWithMethods {
+    class ClassWithMethods extends Any {
         propertyMethod: () => int;
         propertyMethodReturnsMightNull: () => int | null;
         propertyMethodTakesMightNull: (param0: int | null) => Unit;
@@ -476,7 +483,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithMethodsThatReturnsOrTakesFunctionalType::class, setOf(
                 """
-                    class ClassWithMethodsThatReturnsOrTakesFunctionalType {
+                    class ClassWithMethodsThatReturnsOrTakesFunctionalType extends Any {
                         propertyMethodReturnsLambda: () => Function0<int>;
                         propertyMethodReturnsLambdaMightNull: () => Function0<int> | null;
                         propertyMethodTakesLambdaMightNull: (param0: Function0<int> | null) => Unit;
@@ -544,7 +551,7 @@ class ClassWithMember {
                         isMarkedNullable: boolean;
                     }
                 """, """
-                    class KTypeProjection {
+                    class KTypeProjection extends Any {
                         component1(): KVariance | null;
                         component2(): KType | null;
                         copy(variance: KVariance | null, type: KType | null): KTypeProjection;
@@ -581,7 +588,7 @@ class ClassWithMember {
         assertGeneratedCode(
             AbstractClass::class, setOf(
                 """
-    abstract class AbstractClass {
+    abstract class AbstractClass extends Any {
         abstractMethod(): Unit;
         abstractKotlinProperty: int;
         concreteKotlinProperty: string;
@@ -596,7 +603,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithEnum::class, setOf(
                 """
-    class ClassWithEnum {
+    class ClassWithEnum extends Any {
         direction: Direction;
     }
     """, """type Direction = "North" | "West" | "South" | "East";"""
@@ -608,10 +615,10 @@ class ClassWithMember {
         assertGeneratedCode(
             DataClass::class, setOf(
                 """
-    class DataClass {
+    class DataClass extends Any {
         component1(): string;
         copy(prop: string): DataClass;
-        equals(other: any): boolean;
+        equals(other: Any | null): boolean;
         hashCode(): int;
         prop: string;
         toString(): string;
@@ -626,9 +633,9 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithAny::class, setOf(
                 """
-    class ClassWithAny {
-        required: any;
-        optional: any;
+    class ClassWithAny extends Any {
+        required: Any;
+        optional: Any | null;
     }
     """
             )
@@ -639,7 +646,7 @@ class ClassWithMember {
         assertGeneratedCode(
             ClassWithDependencies::class, setOf(
                 """
-class ClassWithDependencies {
+class ClassWithDependencies extends Any {
     widget: CustomWidget;
 }
 """
@@ -651,10 +658,10 @@ class ClassWithDependencies {
         assertGeneratedCode(
             DataClass::class, setOf(
                 """
-    class DataClass {
+    class DataClass extends Any {
         component1(): CustomString;
         copy(prop: CustomString): DataClass;
-        equals(other: any): boolean;
+        equals(other: Any | null): boolean;
         hashCode(): int;
         prop: CustomString;
         toString(): CustomString;
@@ -662,7 +669,7 @@ class ClassWithDependencies {
     """
             ), mappings = mapOf(String::class to "CustomString"), any = """
             class Any {
-                equals(other: any): boolean;
+                equals(other: Any | null): boolean;
                 hashCode(): int;
                 toString(): CustomString;
             }
@@ -674,11 +681,11 @@ class ClassWithDependencies {
         assertGeneratedCode(
             DataClass::class, setOf(
                 """
-    class DataClass {
+    class DataClass extends Any {
         PROP: string;
         component1(): string;
         copy(prop: string): DataClass;
-        equals(other: any): boolean;
+        equals(other: Any | null): boolean;
         hashCode(): int;
         toString(): string;
     }
@@ -707,11 +714,11 @@ class ClassWithDependencies {
         assertGeneratedCode(
             ClassWithDependencies::class, setOf(
                 """
-class ClassWithDependencies {
+class ClassWithDependencies extends Any {
     widget: Widget;
 }
 """, """
-class Widget {
+class Widget extends Any {
     NAME: string;
     VALUE: int;
 }
@@ -734,10 +741,10 @@ class Widget {
         assertGeneratedCode(
             DataClass::class, setOf(
                 """
-    class DataClass {
+    class DataClass extends Any {
         component1(): string;
         copy(prop: string): DataClass;
-        equals(other: any): boolean;
+        equals(other: Any | null): boolean;
         hashCode(): int;
         prop: int | null;
         toString(): string;
@@ -760,7 +767,7 @@ class Widget {
         assertGeneratedCode(
             SimpleTypes::class, setOf(
                 """
-    class SimpleTypes {
+    class SimpleTypes extends Any {
         aString: string;
         aDouble: number;
     }
@@ -785,7 +792,7 @@ class Widget {
         B: string[];
     }
     """, """
-    class BaseClass {
+    class BaseClass extends Any {
         A: int;
     }
     """
@@ -807,7 +814,7 @@ class Widget {
         assertGeneratedCode(
             SimpleTypes::class, setOf(
                 """
-    class SimpleTypes {
+    class SimpleTypes extends Any {
         aString12: string;
         aDouble12: number;
         anInt12: int;
@@ -841,7 +848,7 @@ class Widget {
         assertGeneratedCode(
             JavaClass::class, setOf(
                 """
-    class JavaClass {
+    class JavaClass extends Any {
         finished: boolean;
         getMultidimensional(): string[][];
         getName(): string;
@@ -894,12 +901,18 @@ class Widget {
         assertGeneratedCode(
             ClassWithComplexNullables::class, setOf(
                 """
-    class ClassWithComplexNullables {
+    class ClassWithComplexNullables extends Any {
         maybeWidgets: (string | undefined)[] | undefined;
         maybeWidgetsArray: (string | undefined)[] | undefined;
     }
     """
-            ), voidType = VoidType.UNDEFINED
+            ), voidType = VoidType.UNDEFINED, any = """
+    class Any {
+        equals(other: Any | undefined): boolean;
+        hashCode(): int;
+        toString(): string;
+    }
+            """.trimIndent()
         )
     }
 
@@ -907,7 +920,7 @@ class Widget {
         assertGeneratedCode(
             ClassWithMap::class, setOf(
                 """
-    class ClassWithMap {
+    class ClassWithMap extends Any {
         values: { [key: string]: string };
     }
     """
@@ -921,7 +934,7 @@ class Widget {
                 """
     type Direction = "North" | "West" | "South" | "East";
     """, """
-    class ClassWithEnumMap {
+    class ClassWithEnumMap extends Any {
         values: { [key in Direction]: string };
     }
     """
