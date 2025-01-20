@@ -18,12 +18,14 @@ package me.ntrrgc.tsGenerator.tests
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import me.commandblock2.tsGenerator.generateNPMPackage
 import me.ntrrgc.tsGenerator.ClassTransformer
 import me.ntrrgc.tsGenerator.TypeScriptGenerator
 import me.ntrrgc.tsGenerator.VoidType
 import me.ntrrgc.tsGenerator.onlyOnSubclassesOf
 import java.time.Instant
 import java.util.*
+import kotlin.io.path.Path
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
@@ -935,5 +937,13 @@ class ModuleOutput : StringSpec({
         runModuleGenerationWithoutVerification(
             ClassWithMethodsThatReturnsOrTakesFunctionalType::class
         )
+    }
+})
+
+class WriteNPMPackage : StringSpec({
+    "generates NPM package without error" {
+        TypeScriptGenerator(listOf(ClassWithMethodsThatReturnsOrTakesFunctionalType::class))
+            .generateNPMPackage("test-generated-package-types")
+            .writePackageTo(Path("./runs"))
     }
 })
