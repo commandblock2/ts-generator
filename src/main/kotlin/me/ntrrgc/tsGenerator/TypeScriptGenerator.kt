@@ -298,9 +298,33 @@ class TypeScriptGenerator(
 
 
             return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString {\n" +
+                    constructorsOf(klass) +
                     propertiesOf(klass) +
                     functionsOf(klass) +
                     "}"
+        }
+
+        private fun constructorsOf(klass: KClass<*>): String = try {
+            klass.constructors.joinToString("") { constructor ->
+                val parameters = constructor.parameters
+                    .drop(1)
+                    .joinToString(", ") { param ->
+                        val paramType = pipeline.transformFunctionParameterType(param.type, param, constructor, klass)
+                        "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+
+                    }
+                val visibility = when (constructor.visibility) {
+                    KVisibility.PRIVATE -> "private "
+                    KVisibility.PROTECTED -> "protected "
+                    KVisibility.PUBLIC -> ""
+                    KVisibility.INTERNAL -> ""
+                    else -> ""
+                }
+                "    ${visibility}constructor($parameters)\n"
+            }
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
         }
 
         private fun functionsOf(klass: KClass<*>): String = try {
