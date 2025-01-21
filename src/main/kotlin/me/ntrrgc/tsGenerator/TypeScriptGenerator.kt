@@ -305,9 +305,8 @@ class TypeScriptGenerator(
 
         private fun functionsOf(klass: KClass<*>): String = try {
             klass.declaredMemberFunctions
-                .filter { it.visibility == KVisibility.PUBLIC }
                 .let { functionsList ->
-                    pipeline.transformFunctionList(functionsList, klass)
+                    pipeline.transformFunctionList(functionsList.toList(), klass)
                 }.joinToString("") { function ->
                     val functionName = pipeline.transformFunctionName(function.name, function, klass)
                     val returnType = pipeline.transformFunctionReturnType(function.returnType, function, klass)
@@ -318,8 +317,16 @@ class TypeScriptGenerator(
                             "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
 
                         }
+                    val visibility = when (function.visibility) {
+                        KVisibility.PRIVATE -> "private "
+                        KVisibility.PROTECTED -> "protected "
+                        KVisibility.PUBLIC -> ""
+                        KVisibility.INTERNAL -> ""
+                        else -> ""
+                    }
+
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
-                    "    $functionName($parameters): $formattedReturnType;\n"
+                    "    $visibility$functionName($parameters): $formattedReturnType;\n"
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -329,11 +336,8 @@ class TypeScriptGenerator(
 
         private fun propertiesOf(klass: KClass<*>): String = try {
             klass.declaredMemberProperties
-                .filter {
-                    it.visibility == KVisibility.PUBLIC || isJavaBeanProperty(it, klass)
-                }
                 .let { propertyList ->
-                    pipeline.transformPropertyList(propertyList, klass)
+                    pipeline.transformPropertyList(propertyList.toList(), klass)
                 }.joinToString("") { property ->
                     val propertyName = pipeline.transformPropertyName(property.name, property, klass)
                     val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
@@ -342,7 +346,17 @@ class TypeScriptGenerator(
                         formatPropertyFunctionType(propertyType)
                     else
                         formatKType(propertyType).formatWithoutParenthesis()
-                    "    $propertyName: $formattedPropertyType;\n"
+
+                    val visibility = if (isJavaBeanProperty(property, klass)) "" else
+                        when (property.visibility) {
+                            KVisibility.PRIVATE -> "private "
+                            KVisibility.PROTECTED -> "protected "
+                            KVisibility.PUBLIC -> ""
+                            KVisibility.INTERNAL -> ""
+                            else -> ""
+                        }
+
+                    "    $visibility$propertyName: $formattedPropertyType;\n"
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())

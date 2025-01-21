@@ -192,8 +192,10 @@ class ClassWithMethods(
 }
 
 @Suppress("unused")
-class ClassWithMethodsThatReturnsOrTakesFunctionalType(
+open class ClassWithMethodsThatReturnsOrTakesFunctionalType(
     val propertyMethodReturnsLambda: () -> (() -> Int),
+    private val privatePropertyMethodReturnsLambda: () -> (() -> Int),
+    protected val protectedPropertyMethodReturnsLambda: () -> (() -> Int),
     val propertyMethodReturnsLambdaMightNull: () -> (() -> Int)?,
     val propertyMethodTakesLambdaMightNull: ((() -> Int)?) -> Unit,
 ) {
@@ -203,6 +205,9 @@ class ClassWithMethodsThatReturnsOrTakesFunctionalType(
 
     fun regularMethodThatReturnsLambdaMightNull() = null
     fun regularMethodTakesLambdaReturnsMightNull(x: () -> Int?) {}
+
+    private fun privateMethod() = null
+    protected fun protectedMethod() = null
 }
 
 @Suppress("unused")
