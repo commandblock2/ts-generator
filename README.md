@@ -26,6 +26,7 @@ ts-generator supports:
 * Parenthesis optimization: They are placed only when they are needed to disambiguate.
 * Emitting either `null` or `undefined` for JVM nullable types.
 * Functions
+* Constructors
 
 ## No Proper Way To Install For Now
 
