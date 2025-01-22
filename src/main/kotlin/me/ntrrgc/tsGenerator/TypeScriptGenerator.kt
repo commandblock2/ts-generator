@@ -334,6 +334,9 @@ class TypeScriptGenerator(
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
+        } catch (exception: java.lang.IllegalArgumentException) {
+            print(exception.toString())
+            ""
         }
 
         private fun functionsOf(klass: KClass<*>): String = try {
