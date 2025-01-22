@@ -27,11 +27,12 @@ jobs:
         run: ./gradlew build
 
       # upload file:///home/runner/work/ts-generator/ts-generator/build/reports/tests/test/index.html
+      # Warning: No files were found with the provided path: ts-generator/build/reports/tests/test/. No artifacts will be uploaded.
       - name: Upload test report to GitHub Actions
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: 'test-report'
-          path: 'ts-generator/build/reports/tests/test/'
+          path: 'build/reports/tests/test/'
 
 
