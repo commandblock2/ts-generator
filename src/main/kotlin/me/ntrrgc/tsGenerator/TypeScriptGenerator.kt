@@ -276,13 +276,42 @@ class TypeScriptGenerator(
 
 
         private fun generateInterface(klass: KClass<*>): String {
+            val typeKeyword = when {
+                klass.java.isInterface -> "interface"
+                klass.isAbstract -> "abstract class"
+                else -> "class"
+            }
+
             val supertypes = klass.supertypes
                 .filterNot { it.classifier in ignoredSuperclasses }
 
+
             val extendsString = if (supertypes.isNotEmpty()) {
-                " extends " + supertypes.joinToString(", ") { formatKType(it).formatWithoutParenthesis() }
+                if (klass.java.isInterface) {
+                    " extends " + supertypes.joinToString(", ") {
+                        formatKType(it).formatWithoutParenthesis()
+                    }
+                } else {
+                    val (classSupertypes, interfaceSupertypes) = supertypes.partition {
+                        it.classifier is KClass<*> && (it.classifier as KClass<*>).java.isInterface
+                        // why no smart cast? can't believe it
+                    }
+
+                    val extendsClause = classSupertypes.take(1).map {
+                        "extends ${formatKType(it).formatWithoutParenthesis()}"
+                    }.firstOrNull() ?: ""
+
+                    val implementsClause = if (interfaceSupertypes.isNotEmpty()) {
+                        " implements " + interfaceSupertypes.joinToString(", ") {
+                            formatKType(it).formatWithoutParenthesis()
+                        }
+                    } else ""
+
+                    " $extendsClause$implementsClause"
+                }
             } else ""
 
+            
             val templateParameters = if (klass.typeParameters.isNotEmpty()) {
                 "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
                     val bounds = typeParameter.upperBounds
@@ -296,13 +325,6 @@ class TypeScriptGenerator(
                 } + ">"
             } else {
                 ""
-            }
-
-
-            val typeKeyword = when {
-                klass.java.isInterface -> "interface"
-                klass.isAbstract -> "abstract class"
-                else -> "class"
             }
 
 
