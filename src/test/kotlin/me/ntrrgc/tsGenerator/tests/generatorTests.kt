@@ -77,21 +77,27 @@ fun runModuleGenerationWithoutVerification(
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
     voidType: VoidType = VoidType.NULL
 ) {
-    val generator = TypeScriptGenerator(
-        listOf(klass), mappings, classTransformers,
-        ignoreSuperclasses, intTypeName = "number", voidType = voidType
-    )
+    try {
+        val generator = TypeScriptGenerator(
+            listOf(klass), mappings, classTransformers,
+            ignoreSuperclasses, intTypeName = "number", voidType = voidType
+        )
 
-    val modules = generator.definitionsAsModules
+        val modules = generator.definitionsAsModules
 
-    for (module in modules) {
-        println("file: ${module.key}")
-        println()
-        println("content: ${module.value}")
-        println()
+        for (module in modules) {
+            println("file: ${module.key}")
+            println()
+            println("content: ${module.value}")
+            println()
+        }
+
+        true shouldBe true
+    } catch (exception: Exception) {
+        exception.printStackTrace()
+        throw exception
     }
 
-    true shouldBe true
 }
 
 @Suppress("unused")
@@ -967,8 +973,14 @@ class ModuleOutput : StringSpec({
 
 class Tests : StringSpec({
     "generates NPM package without spitting error" {
-        TypeScriptGenerator(listOf(ClassWithMethodsThatReturnsOrTakesFunctionalType::class))
-            .generateNPMPackage("test-generated-package-types")
-            .writePackageTo(Path("./runs"))
+        try {
+            TypeScriptGenerator(listOf(ClassWithMethodsThatReturnsOrTakesFunctionalType::class))
+                .generateNPMPackage("test-generated-package-types")
+                .writePackageTo(Path("./runs"))
+        } catch (exception: Exception) {
+            exception.printStackTrace()
+            throw exception
+        }
+
     }
 })

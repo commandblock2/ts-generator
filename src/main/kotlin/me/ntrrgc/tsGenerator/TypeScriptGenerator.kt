@@ -140,11 +140,7 @@ class TypeScriptGenerator(
         }
 
         private fun generateDefinition(): String {
-            return if (klass.java.isEnum) {
-                generateEnum(klass)
-            } else {
-                generateInterface(klass)
-            }
+            return generateInterface(klass)
         }
 
 
@@ -169,7 +165,11 @@ class TypeScriptGenerator(
                         )
                             arrayFromKType(kType)
                         else if (classifier.isSubclassOf(Map::class))
-                            mapFromKType(kType)
+                            try {
+                                mapFromKType(kType)
+                            } catch (_: Exception) {
+                                nonPrimitiveFromKType(kType)
+                            }
                         else
                             nonPrimitiveFromKType(kType)
                     )
@@ -244,27 +244,36 @@ class TypeScriptGenerator(
                     getIterableElementType(kType) ?: kType.arguments.singleOrNull()?.type ?: KotlinAnyOrNull
                 }
             }
-            return "${formatKType(itemType).formatWithParenthesis()}[]"
+            // a Path is iterable and it returns Path s for subdirectories
+            return if (kType == itemType)
+                "${nonPrimitiveFromKType(kType)}[]" // can it be others like maps?
+            else
+                "${formatKType(itemType).formatWithParenthesis()}[]"
         }
 
+        // https://github.com/ntrrgc/ts-generator/pull/39/files#diff-15868d315697c109f701fa6b29d6b1beaabb6c461122d4cbca76194bba08da6eR194
+        // GPLv3 does not apply for this function
         private fun mapFromKType(kType: KType): String {
-            // Use native JS associative object
+
             val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
             val keyType = formatKType(rawKeyType)
             val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
-            return if ((rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true)
-                "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
-            else
-                "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+
+            val isKeyEnum = (rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true
+
+            return when {
+                isKeyEnum ->
+                    "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+
+                keyType.formatWithoutParenthesis() == "string" || keyType.formatWithoutParenthesis() == "number" ->
+                    "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
+
+                else ->
+                    "Map<${keyType.formatWithoutParenthesis()}, ${valueType.formatWithoutParenthesis()}>"
+            }
+
         }
 
-        private fun generateEnum(klass: KClass<*>): String {
-            return "type ${klass.simpleName} = ${
-                klass.java.enumConstants.joinToString(" | ") { constant: Any ->
-                    constant.toString().toJSString()
-                }
-            };"
-        }
 
         private fun generateInterface(klass: KClass<*>): String {
             val supertypes = klass.supertypes
@@ -323,6 +332,9 @@ class TypeScriptGenerator(
                 "    ${visibility}constructor($parameters)\n"
             }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        } catch (exception: java.lang.IllegalArgumentException) {
             print(exception.toString())
             ""
         }
