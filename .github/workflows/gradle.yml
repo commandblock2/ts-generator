@@ -28,6 +28,7 @@ jobs:
 
       # upload file:///home/runner/work/ts-generator/ts-generator/build/reports/tests/test/index.html
       - name: Upload test report to GitHub Actions
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: 'test-report'
