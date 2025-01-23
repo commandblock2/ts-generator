@@ -302,16 +302,16 @@ class TypeScriptGenerator(
                     }.firstOrNull() ?: ""
 
                     val implementsClause = if (interfaceSupertypes.isNotEmpty()) {
-                        " implements " + interfaceSupertypes.joinToString(", ") {
+                        "implements " + interfaceSupertypes.joinToString(", ") {
                             formatKType(it).formatWithoutParenthesis()
-                        }
+                        } + " "
                     } else ""
 
-                    " $extendsClause$implementsClause"
+                    " $extendsClause $implementsClause"
                 }
             } else ""
 
-            
+
             val templateParameters = if (klass.typeParameters.isNotEmpty()) {
                 "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
                     val bounds = typeParameter.upperBounds
@@ -328,7 +328,7 @@ class TypeScriptGenerator(
             }
 
 
-            return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString {\n" +
+            return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString{\n" +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
                     functionsOf(klass) +
