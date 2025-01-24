@@ -345,7 +345,7 @@ class TypeScriptGenerator(
 
                     }
                 val visibility = when (constructor.visibility) {
-                    KVisibility.PRIVATE -> "private "
+                    KVisibility.PRIVATE -> "// private "
                     KVisibility.PROTECTED -> "protected "
                     KVisibility.PUBLIC -> ""
                     KVisibility.INTERNAL -> ""
@@ -376,7 +376,7 @@ class TypeScriptGenerator(
 
                         }
                     val visibility = when (function.visibility) {
-                        KVisibility.PRIVATE -> "private "
+                        KVisibility.PRIVATE -> "// private "
                         KVisibility.PROTECTED -> "protected "
                         KVisibility.PUBLIC -> ""
                         KVisibility.INTERNAL -> ""
@@ -407,7 +407,7 @@ class TypeScriptGenerator(
 
                     val visibility = if (isJavaBeanProperty(property, klass)) "" else
                         when (property.visibility) {
-                            KVisibility.PRIVATE -> "private "
+                            KVisibility.PRIVATE -> "// private "
                             KVisibility.PROTECTED -> "protected "
                             KVisibility.PUBLIC -> ""
                             KVisibility.INTERNAL -> ""
