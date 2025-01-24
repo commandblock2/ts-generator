@@ -329,11 +329,121 @@ class TypeScriptGenerator(
 
 
             return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString{\n" +
+                    staticFieldsOf(klass) +
+                    staticMethodsOf(klass) +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
                     functionsOf(klass) +
                     "}"
         }
+
+
+        private fun createKotlinType(javaClass: Class<*>): KType {
+            val kClass = javaClass.kotlin
+            return if (kClass.typeParameters.isEmpty()) {
+                kClass.createType()
+            } else {
+                // If the class has type parameters, create type with Any? for each parameter
+                val typeArgs = kClass.typeParameters.map {
+                    KTypeProjection.invariant(Any::class.createType(nullable = true))
+                }
+                kClass.createType(typeArgs)
+            }
+        }
+
+
+        private fun staticFieldsOf(klass: KClass<*>): String = try {
+            klass.java.fields
+                .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }
+                .joinToString("") { field ->
+                    val fieldName = field.name
+                    val fieldType = field.genericType.let { type ->
+                        when (type) {
+                            is Class<*> -> createKotlinType(type)
+                            is ParameterizedType -> {
+                                val rawType = (type.rawType as Class<*>).kotlin
+                                val typeArgs = type.actualTypeArguments.map { arg ->
+                                    when (arg) {
+                                        is Class<*> -> createKotlinType(arg)
+                                        else -> Any::class.createType(nullable = true)
+                                    }
+                                }
+                                rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
+                            }
+
+                            else -> Any::class.createType(nullable = true)
+                        }
+                    }
+
+                    val visibility = when {
+                        java.lang.reflect.Modifier.isPrivate(field.modifiers) -> "// private "
+                        java.lang.reflect.Modifier.isProtected(field.modifiers) -> "protected "
+                        else -> ""
+                    }
+
+                    "    static $visibility$fieldName: ${formatKType(fieldType).formatWithoutParenthesis()};\n"
+                }
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
+
+        private fun staticMethodsOf(klass: KClass<*>): String = try {
+            klass.java.methods
+                .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }
+                .joinToString("") { method ->
+                    val methodName = method.name
+                    val returnType = method.genericReturnType.let { type ->
+                        when (type) {
+                            is Class<*> -> createKotlinType(type)
+                            is ParameterizedType -> {
+                                val rawType = (type.rawType as Class<*>).kotlin
+                                val typeArgs = type.actualTypeArguments.map { arg ->
+                                    when (arg) {
+                                        is Class<*> -> createKotlinType(arg)
+                                        else -> Any::class.createType(nullable = true)
+                                    }
+                                }
+                                rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
+                            }
+
+                            else -> Any::class.createType(nullable = true)
+                        }
+                    }
+
+                    val parameters = method.parameters
+                        .joinToString(", ") { param ->
+                            val paramType = when (val type = param.parameterizedType) {
+                                is Class<*> -> createKotlinType(type)
+                                is ParameterizedType -> {
+                                    val rawType = (type.rawType as Class<*>).kotlin
+                                    val typeArgs = type.actualTypeArguments.map { arg ->
+                                        when (arg) {
+                                            is Class<*> -> createKotlinType(arg)
+                                            else -> Any::class.createType(nullable = true)
+                                        }
+                                    }
+                                    rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
+                                }
+
+                                else -> Any::class.createType(nullable = true)
+                            }
+                            "param${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+                        }
+
+                    val visibility = when {
+                        java.lang.reflect.Modifier.isPrivate(method.modifiers) -> "// private "
+                        java.lang.reflect.Modifier.isProtected(method.modifiers) -> "protected "
+                        else -> ""
+                    }
+
+                    "    static $visibility$methodName($parameters): ${formatKType(returnType).formatWithoutParenthesis()};\n"
+                }
+        } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
+            print(exception.toString())
+            ""
+        }
+
 
         private fun constructorsOf(klass: KClass<*>): String = try {
             klass.constructors.joinToString("") { constructor ->
