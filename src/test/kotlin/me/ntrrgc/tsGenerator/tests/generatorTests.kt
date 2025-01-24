@@ -54,7 +54,7 @@ fun assertGeneratedCode(
         """
 ) {
     val generator = TypeScriptGenerator(
-        listOf(klass), mappings, classTransformers,
+        listOf(klass), mapOf(), mappings, classTransformers,
         ignoreSuperclasses, intTypeName = "int", voidType = voidType
     )
 
@@ -79,7 +79,7 @@ fun runModuleGenerationWithoutVerification(
 ) {
     try {
         val generator = TypeScriptGenerator(
-            listOf(klass), mappings, classTransformers,
+            listOf(klass), mapOf(), mappings, classTransformers,
             ignoreSuperclasses, intTypeName = "number", voidType = voidType
         )
 

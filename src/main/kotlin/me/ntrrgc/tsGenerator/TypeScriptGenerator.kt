@@ -89,6 +89,7 @@ import kotlin.reflect.jvm.javaType
  */
 class TypeScriptGenerator(
     rootClasses: Iterable<KClass<*>>,
+    unionMappings: Map<KClass<*>, String> = mapOf(),
     mappings: Map<KClass<*>, String> = mapOf(),
     classTransformers: List<ClassTransformer> = listOf(),
     ignoreSuperclasses: Set<KClass<*>> = setOf(),
@@ -144,13 +145,12 @@ class TypeScriptGenerator(
         }
 
 
-        private fun formatKType(kType: KType): TypeScriptType {
+        private fun formatKType(
+            kType: KType,
+            asTypeParameter: Boolean = false
+        ): TypeScriptType {
             val classifier = kType.classifier
             if (classifier is KClass<*>) {
-                val existingMapping = predefinedMappings[classifier]
-                if (existingMapping != null) {
-                    return TypeScriptType.single(predefinedMappings[classifier]!!, kType.isMarkedNullable, voidType)
-                }
                 if (!shouldIgnoreSuperclass(classifier) && !isSameClass(classifier, klass))
                     dependentTypes.add(classifier)
             }
@@ -162,14 +162,9 @@ class TypeScriptGenerator(
                         classifier,
                         if (classifier.isSubclassOf(Iterable::class)
                             || classifier.javaObjectType.isArray
+                            && !asTypeParameter
                         )
                             arrayFromKType(kType)
-                        else if (classifier.isSubclassOf(Map::class))
-                            try {
-                                mapFromKType(kType)
-                            } catch (_: Exception) {
-                                nonPrimitiveFromKType(kType)
-                            }
                         else
                             nonPrimitiveFromKType(kType)
                     )
@@ -178,7 +173,16 @@ class TypeScriptGenerator(
                 else
                     "UNKNOWN" // giving up
 
-            return TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType)
+            // TODO: Java typing for type parameter and js type for functions
+            val existingUnionMapping = predefinedUnionMappings[classifier]
+            return if (classifier is KClass<*> && existingUnionMapping != null) {
+                TypeScriptType.single(predefinedUnionMappings[classifier]!!, kType.isMarkedNullable, voidType)
+                    .or(
+                        TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType),
+                        asTypeParameter
+                    )
+
+            } else TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType)
         }
 
         private fun nonPrimitiveFromKType(kType: KType): String {
@@ -251,29 +255,6 @@ class TypeScriptGenerator(
                 "${formatKType(itemType).formatWithParenthesis()}[]"
         }
 
-        // https://github.com/ntrrgc/ts-generator/pull/39/files#diff-15868d315697c109f701fa6b29d6b1beaabb6c461122d4cbca76194bba08da6eR194
-        // GPLv3 does not apply for this function
-        private fun mapFromKType(kType: KType): String {
-
-            val rawKeyType = kType.arguments[0].type ?: KotlinAnyOrNull
-            val keyType = formatKType(rawKeyType)
-            val valueType = formatKType(kType.arguments[1].type ?: KotlinAnyOrNull)
-
-            val isKeyEnum = (rawKeyType.classifier as? KClass<*>)?.java?.isEnum == true
-
-            return when {
-                isKeyEnum ->
-                    "{ [key in ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
-
-                keyType.formatWithoutParenthesis() == "string" || keyType.formatWithoutParenthesis() == "number" ->
-                    "{ [key: ${keyType.formatWithoutParenthesis()}]: ${valueType.formatWithoutParenthesis()} }"
-
-                else ->
-                    "Map<${keyType.formatWithoutParenthesis()}, ${valueType.formatWithoutParenthesis()}>"
-            }
-
-        }
-
 
         private fun generateInterface(klass: KClass<*>): String {
             val typeKeyword = when {
@@ -289,7 +270,7 @@ class TypeScriptGenerator(
             val extendsString = if (supertypes.isNotEmpty()) {
                 if (klass.java.isInterface) {
                     " extends " + supertypes.joinToString(", ") {
-                        formatKType(it).formatWithoutParenthesis()
+                        formatKType(it, asTypeParameter = true).formatWithoutParenthesis()
                     }
                 } else {
                     val (interfaceSupertypes, classSupertypes) = supertypes.partition {
@@ -298,7 +279,7 @@ class TypeScriptGenerator(
                     }
 
                     val extendsClause = classSupertypes.take(1).map {
-                        "extends ${formatKType(it).formatWithoutParenthesis()}"
+                        "extends ${formatKType(it, asTypeParameter = true).formatWithoutParenthesis()}"
                     }.firstOrNull() ?: ""
 
                     val implementsClause = if (interfaceSupertypes.isNotEmpty()) {
@@ -555,21 +536,24 @@ class TypeScriptGenerator(
     private val ignoredSuperclasses = setOf<KClass<*>>(
     ).plus(ignoreSuperclasses)
 
-    private val predefinedMappings =
-        mapOf(
-            Boolean::class to "boolean",
-            String::class to "string",
-            Char::class to "string",
+    private val predefinedMappings = mappings
 
-            Int::class to intTypeName,
-            Long::class to intTypeName,
-            Short::class to intTypeName,
-            Byte::class to intTypeName,
+    private val predefinedUnionMappings = mapOf(
+        Boolean::class to "boolean",
+        String::class to "string",
+        Char::class to "string",
 
-            Float::class to "number",
-            Double::class to "number",
+        Int::class to intTypeName,
+        Long::class to intTypeName,
+        Short::class to intTypeName,
+        Byte::class to intTypeName,
 
-            ).plus(mappings) // mappings has a higher priority
+        Float::class to "number",
+        Double::class to "number",
+
+        Any::class to "any"
+
+    ).plus(unionMappings)
 
     private val shouldIgnoreSuperclass: (KClass<*>) -> Boolean = { klass: KClass<*> ->
         klass.isSubclassOf(Iterable::class) || klass.javaObjectType.isArray || klass.isSubclassOf(Map::class)

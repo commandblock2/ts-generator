@@ -21,7 +21,7 @@ internal class TypeScriptType private constructor(val types: List<String>) {
         fun single(type: String, nullable: Boolean, voidType: VoidType): TypeScriptType {
             return TypeScriptType(listOf(type)).let {
                 if (nullable) {
-                    it or TypeScriptType(listOf(voidType.jsTypeName))
+                    it.or(TypeScriptType(listOf(voidType.jsTypeName)))
                 } else {
                     it
                 }
@@ -33,15 +33,13 @@ internal class TypeScriptType private constructor(val types: List<String>) {
         }
     }
 
-    infix fun or(other: TypeScriptType): TypeScriptType {
-        val combinedTypes = (this.types + other.types).distinct()
+    fun or(other: TypeScriptType, excludeTypeScriptAny: Boolean = false): TypeScriptType {
+        val combinedTypes = (this.types + other.types).distinct().filter {
+            !excludeTypeScriptAny || it != "any"
+        }
 
         return TypeScriptType(
-            if ("any" in combinedTypes) {
-                listOf("any")
-            } else {
-                combinedTypes
-            }
+            combinedTypes
         )
     }
 
