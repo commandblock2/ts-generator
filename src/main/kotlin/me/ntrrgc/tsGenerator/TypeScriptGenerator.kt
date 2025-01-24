@@ -292,9 +292,9 @@ class TypeScriptGenerator(
                         formatKType(it).formatWithoutParenthesis()
                     }
                 } else {
-                    val (classSupertypes, interfaceSupertypes) = supertypes.partition {
-                        it.classifier is KClass<*> && (it.classifier as KClass<*>).java.isInterface
-                        // why no smart cast? can't believe it
+                    val (interfaceSupertypes, classSupertypes) = supertypes.partition {
+                        val classifier = it.classifier
+                        classifier is KClass<*> && classifier.java.isInterface
                     }
 
                     val extendsClause = classSupertypes.take(1).map {
