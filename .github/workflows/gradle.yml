@@ -35,4 +35,12 @@ jobs:
           name: 'test-report'
           path: 'build/reports/tests/test/'
 
+      # upload file:///home/runner/work/ts-generator/ts-generator/build/libs/*.jar
+      - name: Upload jar to GitHub Actions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'ts-generator'  # artifact name
+          path: 'build/libs/'
+
 
