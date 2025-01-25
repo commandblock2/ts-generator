@@ -386,7 +386,11 @@ class TypeScriptGenerator(
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
+        } catch (exception: NoClassDefFoundError) {
+            print("Missing dependency: ${exception.message}")
+            "" // Return empty string when dependency is missing
         }
+
 
         private fun staticMethodsOf(klass: KClass<*>): String = try {
             klass.java.methods
@@ -442,6 +446,9 @@ class TypeScriptGenerator(
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
+        } catch (exception: NoClassDefFoundError) {
+            print("Missing dependency: ${exception.message}")
+            "" // Return empty string when dependency is missing
         }
 
 
@@ -469,7 +476,11 @@ class TypeScriptGenerator(
         } catch (exception: java.lang.IllegalArgumentException) {
             print(exception.toString())
             ""
+        } catch (exception: NoClassDefFoundError) {
+            print("Missing dependency: ${exception.message}")
+            "" // Return empty string when dependency is missing
         }
+
 
         private fun functionsOf(klass: KClass<*>): String = try {
             klass.declaredMemberFunctions
@@ -499,6 +510,9 @@ class TypeScriptGenerator(
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
+        } catch (exception: NoClassDefFoundError) {
+            print("Missing dependency: ${exception.message}")
+            "" // Return empty string when dependency is missing
         }
 
 
@@ -529,6 +543,9 @@ class TypeScriptGenerator(
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             ""
+        } catch (exception: NoClassDefFoundError) {
+            print("Missing dependency: ${exception.message}")
+            "" // Return empty string when dependency is missing
         }
 
 
