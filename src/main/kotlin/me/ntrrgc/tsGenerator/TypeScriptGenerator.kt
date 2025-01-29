@@ -29,6 +29,7 @@
 
 package me.ntrrgc.tsGenerator
 
+import me.commandblock2.tsGenerator.binaryName
 import java.beans.Introspector
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -118,7 +119,7 @@ class TypeScriptGenerator(
                 val upLevels = "../".repeat(depth)
                 val downPath = importPath.removePrefix("/")
 
-                "import type { ${it.simpleName} } from '$upLevels$downPath'"
+                "import type { ${it.binaryName()} } from '$upLevels$downPath'"
             } + "export " + definition
         }
 
@@ -131,7 +132,7 @@ class TypeScriptGenerator(
 
         private fun getFilePathForClassWithoutExtension(klass: KClass<*>): String {
             val packagePath = klass.java.`package`?.name?.replace('.', '/') ?: ""
-            val className = klass.simpleName
+            val className = klass.binaryName()
             return if (packagePath.isEmpty()) {
                 "$className.d.ts"
             } else {
@@ -183,7 +184,7 @@ class TypeScriptGenerator(
 
         private fun nonPrimitiveFromKType(kType: KType): String {
             val kClass = kType.classifier as KClass<*>
-            val simpleName = kClass.simpleName!!
+            val binaryName = kClass.binaryName()
 
             // If the counts don't match, this might indicate a specialized type
             // This is actually infuriating and fucking frustrating that Kotlin does not fucking
@@ -196,7 +197,7 @@ class TypeScriptGenerator(
             // would you rather rely on .toString() and parse it and rely on the alternative shitty hack?
             // place the breakpoint and see for yourself
             if (kType.arguments.size != kClass.typeParameters.size) {
-                return simpleName + if (kClass.typeParameters.isNotEmpty()) "<${
+                return binaryName + if (kClass.typeParameters.isNotEmpty()) "<${
                     (1..kClass.typeParameters.size).joinToString(
                         ", "
                     ) { "Any" }
@@ -204,7 +205,7 @@ class TypeScriptGenerator(
             }
 
             // Only add generic parameters if counts match
-            return simpleName + if (kType.arguments.isNotEmpty()) {
+            return binaryName + if (kType.arguments.isNotEmpty()) {
                 "<" + kType.arguments.joinToString(", ") { arg ->
                     formatKType(
                         arg.type ?: KotlinAnyOrNull
@@ -328,7 +329,7 @@ class TypeScriptGenerator(
             }
 
 
-            return "$typeKeyword ${klass.simpleName}$templateParameters$extendsString{\n" +
+            return "$typeKeyword ${klass.binaryName()}$templateParameters$extendsString{\n" +
                     staticFieldsOf(klass) +
                     staticMethodsOf(klass) +
                     constructorsOf(klass) +
@@ -594,7 +595,12 @@ class TypeScriptGenerator(
 
 
     init {
-        rootClasses.forEach { visitClass(it) }
+        rootClasses.forEach {
+            visitClass(it)
+            for (klass in it.nestedClasses) {
+                visitClass(klass)
+            }
+        }
     }
 
     companion object {

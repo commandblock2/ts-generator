@@ -247,6 +247,11 @@ class ClassWithMap(val values: Map<String, String>)
 @Suppress("unused")
 class ClassWithEnumMap(val values: Map<Direction, String>)
 
+@Suppress("unused")
+class ClassWithInner(val value: String = "") {
+    inner class Inner(val innerValue: String = "")
+}
+
 //@Suppress("unused")
 //class Tests : StringSpec({
 //    "handles empty class" {
@@ -966,7 +971,7 @@ class ModuleOutput : StringSpec({
     // TODO: re-enable when we have a way to test this
     "handles Module Output" {
         runModuleGenerationWithoutVerification(
-            ClassWithMethodsThatReturnsOrTakesFunctionalType::class
+            ClassWithMethodsThatReturnsOrTakesFunctionalType::class,
         )
     }
 })
@@ -974,7 +979,7 @@ class ModuleOutput : StringSpec({
 class Tests : StringSpec({
     "generates NPM package without spitting error" {
         try {
-            TypeScriptGenerator(listOf(ClassWithMethodsThatReturnsOrTakesFunctionalType::class))
+            TypeScriptGenerator(listOf(ClassWithMethodsThatReturnsOrTakesFunctionalType::class, ClassWithInner::class))
                 .generateNPMPackage("test-generated-package-types")
                 .writePackageTo(Path("./runs"))
         } catch (exception: Exception) {
