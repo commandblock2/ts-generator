@@ -456,7 +456,6 @@ class TypeScriptGenerator(
         private fun constructorsOf(klass: KClass<*>): String = try {
             klass.constructors.joinToString("") { constructor ->
                 val parameters = constructor.parameters
-                    .drop(1)
                     .joinToString(", ") { param ->
                         val paramType = pipeline.transformFunctionParameterType(param.type, param, constructor, klass)
                         "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
