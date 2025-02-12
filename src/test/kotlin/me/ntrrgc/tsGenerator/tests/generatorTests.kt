@@ -967,11 +967,46 @@ class ClassWithInner(val value: String = "") {
 //})
 
 
+// example from LiquidBounce-NextGen
+
+open class Event
+
+/**
+ * A cancellable event
+ */
+open class CancellableEvent : Event() {
+
+    /**
+     * Let you know if the event is cancelled
+     *
+     * @return state of cancel
+     */
+    @Suppress("unused")
+    var isCancelled: Boolean = false
+        private set
+
+    /**
+     * Allows you to cancel an event
+     */
+    @Suppress("unused")
+    fun cancelEvent() {
+        isCancelled = true
+    }
+
+}
+
+
 class ModuleOutput : StringSpec({
-    // TODO: re-enable when we have a way to test this
+    // TODO: re-enable verification when we have a way to test this
     "handles Module Output" {
         runModuleGenerationWithoutVerification(
-            ClassWithMethodsThatReturnsOrTakesFunctionalType::class,
+            ClassWithMethodsThatReturnsOrTakesFunctionalType::class
+        )
+    }
+
+    "run Private Set property" {
+        runModuleGenerationWithoutVerification(
+            CancellableEvent::class
         )
     }
 })
