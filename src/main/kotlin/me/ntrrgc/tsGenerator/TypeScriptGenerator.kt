@@ -31,8 +31,10 @@ package me.ntrrgc.tsGenerator
 
 import me.commandblock2.tsGenerator.binaryName
 import java.beans.Introspector
+import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
+import java.util.Locale
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberFunctions
@@ -355,7 +357,7 @@ class TypeScriptGenerator(
 
         private fun staticFieldsOf(klass: KClass<*>): String = try {
             klass.java.fields
-                .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }
+                .filter { Modifier.isStatic(it.modifiers) }
                 .joinToString("") { field ->
                     val fieldName = field.name
                     val fieldType = field.genericType.let { type ->
@@ -377,8 +379,8 @@ class TypeScriptGenerator(
                     }
 
                     val visibility = when {
-                        java.lang.reflect.Modifier.isPrivate(field.modifiers) -> "// private "
-                        java.lang.reflect.Modifier.isProtected(field.modifiers) -> "protected "
+                        Modifier.isPrivate(field.modifiers) -> "// private "
+                        Modifier.isProtected(field.modifiers) -> "protected "
                         else -> ""
                     }
 
@@ -395,7 +397,7 @@ class TypeScriptGenerator(
 
         private fun staticMethodsOf(klass: KClass<*>): String = try {
             klass.java.methods
-                .filter { java.lang.reflect.Modifier.isStatic(it.modifiers) }
+                .filter { Modifier.isStatic(it.modifiers) }
                 .joinToString("") { method ->
                     val methodName = method.name
                     val returnType = method.genericReturnType.let { type ->
@@ -437,8 +439,8 @@ class TypeScriptGenerator(
                         }
 
                     val visibility = when {
-                        java.lang.reflect.Modifier.isPrivate(method.modifiers) -> "// private "
-                        java.lang.reflect.Modifier.isProtected(method.modifiers) -> "protected "
+                        Modifier.isPrivate(method.modifiers) -> "// private "
+                        Modifier.isProtected(method.modifiers) -> "protected "
                         else -> ""
                     }
 
@@ -538,7 +540,25 @@ class TypeScriptGenerator(
                             else -> ""
                         }
 
-                    "    $visibility$propertyName: $formattedPropertyType;\n"
+                    val shouldTreatAsProperty = hasAccessibleBackingField(property, klass) ||
+                            isJavaBeanProperty(property, klass)
+
+                    if (!shouldTreatAsProperty) {
+                        // Generate getter method instead of property
+                        val prefix = if (propertyType.classifier == Boolean::class) "is" else "get"
+                        val methodName =
+                            prefix + propertyName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                        val visibility = when (property.visibility) {
+                            KVisibility.PRIVATE -> "// private "
+                            KVisibility.PROTECTED -> "protected "
+                            KVisibility.PUBLIC -> ""
+                            KVisibility.INTERNAL -> ""
+                            else -> ""
+                        }
+                        "    $visibility$methodName(): $formattedPropertyType;\n"
+                    } else {
+                        "    $visibility$propertyName: $formattedPropertyType;\n"
+                    }
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -610,6 +630,17 @@ class TypeScriptGenerator(
             return beanInfo.propertyDescriptors
                 .any { bean -> bean.name == kProperty.name }
         }
+
+        fun hasAccessibleBackingField(kProperty: KProperty<*>, klass: KClass<*>): Boolean {
+            return try {
+                val field = klass.java.getDeclaredField(kProperty.name)
+                // Check if field is private
+                !Modifier.isPrivate(field.modifiers)
+            } catch (_: NoSuchFieldException) {
+                false
+            }
+        }
+
     }
 
     private fun isSameClass(klassLhs: KClass<*>, klassRhs: KClass<*>): Boolean =

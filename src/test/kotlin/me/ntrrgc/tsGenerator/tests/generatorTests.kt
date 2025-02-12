@@ -996,11 +996,33 @@ open class CancellableEvent : Event() {
 }
 
 
+@Suppress("unused")
+class Example {
+    val normalVal: String = "hello"           // Will generate getString()
+    var normalVar: Int = 42                   // Will generate getInt() and setInt()
+
+    companion object {
+        const val CONSTANT: Int = 1               // Will generate as field
+    }
+
+    @JvmField
+    var field: Boolean = false      // Will generate as field
+    var privateSetVar: Double = 0.0           // Will generate getDouble() only
+        private set
+}
+
+
 class ModuleOutput : StringSpec({
     // TODO: re-enable verification when we have a way to test this
     "handles Module Output" {
         runModuleGenerationWithoutVerification(
             ClassWithMethodsThatReturnsOrTakesFunctionalType::class
+        )
+    }
+
+    "run bean related tests" {
+        runModuleGenerationWithoutVerification(
+            Example::class
         )
     }
 
