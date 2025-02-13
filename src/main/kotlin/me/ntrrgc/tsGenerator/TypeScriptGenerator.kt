@@ -40,6 +40,7 @@ import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
+import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -525,44 +526,38 @@ class TypeScriptGenerator(
                 }.joinToString("") { property ->
                     val propertyName = pipeline.transformPropertyName(property.name, property, klass)
                     val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
-
                     val formattedPropertyType = if (isFunctionType(property.returnType.javaType))
                         formatPropertyFunctionType(propertyType)
                     else
                         formatKType(propertyType).formatWithoutParenthesis()
 
-                    val visibility = if (isJavaBeanProperty(property, klass)) "" else
-                        when (property.visibility) {
-                            KVisibility.PRIVATE -> "// private "
-                            KVisibility.PROTECTED -> "protected "
-                            KVisibility.PUBLIC -> ""
-                            KVisibility.INTERNAL -> ""
-                            else -> ""
-                        }
+                    when {
+                        // Handle companion object constants
+                        property.name == "Companion" -> ""
 
-                    val shouldTreatAsProperty = hasAccessibleBackingField(property, klass) ||
-                            isJavaBeanProperty(property, klass)
+                        // Static fields from companion object
+                        property.isConst -> "    static $propertyName: $formattedPropertyType;\n"
 
-                    if (!shouldTreatAsProperty) {
-                        // Generate getter method instead of property
-                        val prefix = if (propertyType.classifier == Boolean::class) "is" else "get"
-                        val methodName =
-                            prefix + propertyName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                        val visibility = when (property.visibility) {
-                            KVisibility.PRIVATE -> "// private "
-                            KVisibility.PROTECTED -> "protected "
-                            KVisibility.PUBLIC -> ""
-                            KVisibility.INTERNAL -> ""
-                            else -> ""
-                        }
-                        "    $visibility$methodName(): $formattedPropertyType;\n"
-                    } else {
-                        "    $visibility$propertyName: $formattedPropertyType;\n"
+                        // JvmField annotated properties - generate as fields
+                        property.javaField?.isAnnotationPresent(JvmField::class.java) == true ->
+                            "    $propertyName: $formattedPropertyType;\n"
+
+                        // Properties with private setters - generate as getter methods
+                        property is KMutableProperty1<*, *> &&
+                                property.setter.visibility == KVisibility.PRIVATE ->
+                            "    ${propertyName}(): $formattedPropertyType;\n"
+
+                        // Regular mutable properties - generate as fields
+                        property is KMutableProperty1<*, *> ->
+                            "    $propertyName: $formattedPropertyType;\n"
+
+                        // Read-only properties - generate as getter methods
+                        else -> "    ${propertyName}(): $formattedPropertyType;\n"
                     }
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
-            ""
+            "" // Return empty string when an internal reflection error occurs
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
@@ -634,8 +629,7 @@ class TypeScriptGenerator(
         fun hasAccessibleBackingField(kProperty: KProperty<*>, klass: KClass<*>): Boolean {
             return try {
                 val field = klass.java.getDeclaredField(kProperty.name)
-                // Check if field is private
-                !Modifier.isPrivate(field.modifiers)
+                Modifier.isPublic(field.modifiers)
             } catch (_: NoSuchFieldException) {
                 false
             }
