@@ -984,6 +984,8 @@ open class CancellableEvent : Event() {
     @Suppress("unused")
     var isCancelled: Boolean = false
         private set
+    // should generate to a public method: `isCancelled(): boolean`
+    // and maybe a private property or don't, both acceptable
 
     /**
      * Allows you to cancel an event
@@ -1011,10 +1013,10 @@ class Example {
         private set
 }
 
-
+@Suppress("unused")
 class PacketEvent(val origin: TransferOrigin, val original: Boolean = true) : CancellableEvent()
 
-
+@Suppress("unused")
 enum class TransferOrigin {
     SEND, RECEIVE
 }

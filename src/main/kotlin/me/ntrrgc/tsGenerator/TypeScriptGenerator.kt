@@ -35,7 +35,6 @@ import java.beans.Introspector
 import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
-import java.util.Locale
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberFunctions
@@ -43,6 +42,7 @@ import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.javaGetter
+import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -533,24 +533,51 @@ class TypeScriptGenerator(
                         formatKType(propertyType).formatWithoutParenthesis()
 
                     buildList {
-                        // Generate field entry if javaField exists, converting it using pipeline
-                        property.javaField?.let { javaField ->
-                            val transformedFieldName = pipeline.transformPropertyName(javaField.name, property, klass)
+                        // Handle Java Bean properties first
+                        if (isJavaBeanProperty(property, klass)) {
+                            // For boolean properties with 'is' prefix, we want to preserve the name
+                            val isBooleanWithIsPrefix = property.returnType.classifier == Boolean::class &&
+                                    property.name.startsWith("is", ignoreCase = true)
 
-                            val visibility = if (Modifier.isPublic(javaField.modifiers)) "" else "private "
-                            add("    ${visibility}${transformedFieldName}: $formattedPropertyType;\n")
-                        }
-
-                        // Generate getter function entry if javaGetter exists, converting it using pipeline
-                        property.javaGetter?.let { javaGetter ->
-                            val transformedGetterName = javaGetter.toKFunction()?.let { func ->
-                                pipeline.transformFunctionName(javaGetter.name, func, klass)
+                            val transformedPropertyName = if (isBooleanWithIsPrefix) {
+                                property.name  // Keep original name for 'is' prefixed booleans
+                            } else {
+                                pipeline.transformPropertyName(property.name, property, klass)
                             }
-                                ?: "/*not mapped: */ ${javaGetter.name}"
-                            // this is happening because the transformer is based on kotlin types
 
-                            val visibility = if (Modifier.isPublic(javaGetter.modifiers)) "" else "private "
-                            add("    ${visibility}${transformedGetterName}(): $formattedPropertyType;\n")
+                            // Check if the property has a private setter
+                            val isReadOnly = property is KMutableProperty1<*, *> &&
+                                    !Modifier.isPublic(
+                                        property.setter.javaMethod?.modifiers ?: 0
+                                    )
+
+                            // Generate as a readonly property if it has a private setter
+                            if (isReadOnly) {
+                                add("    readonly ${transformedPropertyName}: $formattedPropertyType;\n")
+                            } else {
+                                add("    ${transformedPropertyName}: $formattedPropertyType;\n")
+                            }
+                        } else {
+                            // Fallback to existing field/getter generation for non-bean properties
+                            // Generate field entry if javaField exists
+                            val javaField = property.javaField
+                            if (javaField != null) {
+                                val transformedFieldName =
+                                    pipeline.transformPropertyName(property.name, property, klass)
+                                val visibility =
+                                    if (Modifier.isPublic(javaField.modifiers)) "" else "private "
+                                add("    ${visibility}${transformedFieldName}: $formattedPropertyType;\n")
+                            }
+
+                            // Generate getter function entry if javaGetter exists and not already handled as bean
+                            property.javaGetter?.let { javaGetter ->
+                                val transformedGetterName = javaGetter.toKFunction()?.let { func ->
+                                    pipeline.transformFunctionName(javaGetter.name, func, klass)
+                                } ?: "/*not mapped: */ ${javaGetter.name}"
+
+                                val visibility = if (Modifier.isPublic(javaGetter.modifiers)) "" else "private "
+                                add("    ${visibility}${transformedGetterName}(): $formattedPropertyType;\n")
+                            }
                         }
                     }
                 }.joinToString("")
