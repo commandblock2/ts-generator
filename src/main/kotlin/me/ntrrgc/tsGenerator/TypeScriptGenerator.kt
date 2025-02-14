@@ -565,7 +565,7 @@ class TypeScriptGenerator(
                                 val transformedFieldName =
                                     pipeline.transformPropertyName(property.name, property, klass)
                                 val visibility =
-                                    if (Modifier.isPublic(javaField.modifiers)) "" else "private "
+                                    if (Modifier.isPublic(javaField.modifiers)) "" else "// private "
                                 add("    ${visibility}${transformedFieldName}: $formattedPropertyType;\n")
                             }
 
