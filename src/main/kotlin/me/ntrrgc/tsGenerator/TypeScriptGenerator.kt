@@ -30,6 +30,7 @@
 package me.ntrrgc.tsGenerator
 
 import me.commandblock2.tsGenerator.binaryName
+import me.commandblock2.tsGenerator.commentIfInvalid
 import me.commandblock2.tsGenerator.toKFunction
 import java.beans.Introspector
 import java.lang.reflect.Modifier
@@ -388,6 +389,7 @@ class TypeScriptGenerator(
                     }
 
                     "    static $visibility$fieldName: ${formatKType(fieldType).formatWithoutParenthesis()};\n"
+                        .commentIfInvalid()
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -448,6 +450,7 @@ class TypeScriptGenerator(
                     }
 
                     "    static $visibility$methodName($parameters): ${formatKType(returnType).formatWithoutParenthesis()};\n"
+                        .commentIfInvalid()
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -474,6 +477,7 @@ class TypeScriptGenerator(
                     else -> ""
                 }
                 "    ${visibility}constructor($parameters)\n"
+                    .commentIfInvalid()
             }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -511,6 +515,7 @@ class TypeScriptGenerator(
 
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
                     "    $visibility$functionName($parameters): $formattedReturnType;\n"
+                        .commentIfInvalid()
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
@@ -553,9 +558,14 @@ class TypeScriptGenerator(
 
                             // Generate as a readonly property if it has a private setter
                             if (isReadOnly) {
-                                add("    readonly ${transformedPropertyName}: $formattedPropertyType;\n")
+                                add(
+                                    "    readonly ${transformedPropertyName}: $formattedPropertyType;\n"
+                                        .commentIfInvalid()
+                                )
                             } else {
-                                add("    ${transformedPropertyName}: $formattedPropertyType;\n")
+                                add(
+                                    "    ${transformedPropertyName}: $formattedPropertyType;\n".commentIfInvalid()
+                                )
                             }
                         } else {
                             // Fallback to existing field/getter generation for non-bean properties
@@ -566,7 +576,10 @@ class TypeScriptGenerator(
                                     pipeline.transformPropertyName(property.name, property, klass)
                                 val visibility =
                                     if (Modifier.isPublic(javaField.modifiers)) "" else "// private "
-                                add("    ${visibility}${transformedFieldName}: $formattedPropertyType;\n")
+                                add(
+                                    "    ${visibility}${transformedFieldName}: $formattedPropertyType;\n"
+                                        .commentIfInvalid()
+                                )
                             }
 
                             // Generate getter function entry if javaGetter exists and not already handled as bean
@@ -575,8 +588,11 @@ class TypeScriptGenerator(
                                     pipeline.transformFunctionName(javaGetter.name, func, klass)
                                 } ?: "/*not mapped: */ ${javaGetter.name}"
 
-                                val visibility = if (Modifier.isPublic(javaGetter.modifiers)) "" else "private "
-                                add("    ${visibility}${transformedGetterName}(): $formattedPropertyType;\n")
+                                val visibility = if (Modifier.isPublic(javaGetter.modifiers)) "" else "// private "
+                                add(
+                                    "    ${visibility}${transformedGetterName}(): $formattedPropertyType;\n"
+                                        .commentIfInvalid()
+                                )
                             }
                         }
                     }
