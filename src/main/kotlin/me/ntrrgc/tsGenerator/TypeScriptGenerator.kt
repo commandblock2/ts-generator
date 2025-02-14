@@ -30,6 +30,7 @@
 package me.ntrrgc.tsGenerator
 
 import me.commandblock2.tsGenerator.binaryName
+import me.commandblock2.tsGenerator.toKFunction
 import java.beans.Introspector
 import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
@@ -41,6 +42,7 @@ import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaField
+import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -523,38 +525,35 @@ class TypeScriptGenerator(
             klass.declaredMemberProperties
                 .let { propertyList ->
                     pipeline.transformPropertyList(propertyList.toList(), klass)
-                }.joinToString("") { property ->
-                    val propertyName = pipeline.transformPropertyName(property.name, property, klass)
+                }.flatMap { property ->
                     val propertyType = pipeline.transformPropertyType(property.returnType, property, klass)
                     val formattedPropertyType = if (isFunctionType(property.returnType.javaType))
                         formatPropertyFunctionType(propertyType)
                     else
                         formatKType(propertyType).formatWithoutParenthesis()
 
-                    when {
-                        // Handle companion object constants
-                        property.name == "Companion" -> ""
+                    buildList {
+                        // Generate field entry if javaField exists, converting it using pipeline
+                        property.javaField?.let { javaField ->
+                            val transformedFieldName = pipeline.transformPropertyName(javaField.name, property, klass)
 
-                        // Static fields from companion object
-                        property.isConst -> "    static $propertyName: $formattedPropertyType;\n"
+                            val visibility = if (Modifier.isPublic(javaField.modifiers)) "" else "private "
+                            add("    ${visibility}${transformedFieldName}: $formattedPropertyType;\n")
+                        }
 
-                        // JvmField annotated properties - generate as fields
-                        property.javaField?.isAnnotationPresent(JvmField::class.java) == true ->
-                            "    $propertyName: $formattedPropertyType;\n"
+                        // Generate getter function entry if javaGetter exists, converting it using pipeline
+                        property.javaGetter?.let { javaGetter ->
+                            val transformedGetterName = javaGetter.toKFunction()?.let { func ->
+                                pipeline.transformFunctionName(javaGetter.name, func, klass)
+                            }
+                                ?: "/*not mapped: */ ${javaGetter.name}"
+                            // this is happening because the transformer is based on kotlin types
 
-                        // Properties with private setters - generate as getter methods
-                        property is KMutableProperty1<*, *> &&
-                                property.setter.visibility == KVisibility.PRIVATE ->
-                            "    ${propertyName}(): $formattedPropertyType;\n"
-
-                        // Regular mutable properties - generate as fields
-                        property is KMutableProperty1<*, *> ->
-                            "    $propertyName: $formattedPropertyType;\n"
-
-                        // Read-only properties - generate as getter methods
-                        else -> "    ${propertyName}(): $formattedPropertyType;\n"
+                            val visibility = if (Modifier.isPublic(javaGetter.modifiers)) "" else "private "
+                            add("    ${visibility}${transformedGetterName}(): $formattedPropertyType;\n")
+                        }
                     }
-                }
+                }.joinToString("")
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
             print(exception.toString())
             "" // Return empty string when an internal reflection error occurs

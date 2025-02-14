@@ -1012,6 +1012,14 @@ class Example {
 }
 
 
+class PacketEvent(val origin: TransferOrigin, val original: Boolean = true) : CancellableEvent()
+
+
+enum class TransferOrigin {
+    SEND, RECEIVE
+}
+
+
 class ModuleOutput : StringSpec({
     // TODO: re-enable verification when we have a way to test this
     "handles Module Output" {
@@ -1029,6 +1037,12 @@ class ModuleOutput : StringSpec({
     "run Private Set property" {
         runModuleGenerationWithoutVerification(
             CancellableEvent::class
+        )
+    }
+
+    "run PacketEven without packet xD" {
+        runModuleGenerationWithoutVerification(
+            PacketEvent::class
         )
     }
 })
