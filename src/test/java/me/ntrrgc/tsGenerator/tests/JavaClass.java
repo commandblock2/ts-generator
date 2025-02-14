@@ -21,6 +21,13 @@ public class JavaClass {
     private int[] results;
     private boolean finished;
     private char[][] multidimensional;
+    private int notABean;
+
+    public int publicInt;
+
+    public int getPublicInt() {
+        return publicInt;
+    }
 
     public String getName() {
         return name;

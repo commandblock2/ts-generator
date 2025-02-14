@@ -1009,7 +1009,7 @@ class Example {
 
     @JvmField
     var field: Boolean = false      // Will generate as field
-    var privateSetVar: Double = 0.0           // Will generate getDouble() only
+    var privateSetVar: Double = 0.0           // should generate a readonly property
         private set
 }
 
@@ -1045,6 +1045,12 @@ class ModuleOutput : StringSpec({
     "run PacketEven without packet xD" {
         runModuleGenerationWithoutVerification(
             PacketEvent::class
+        )
+    }
+
+    "run JavaClass" {
+        runModuleGenerationWithoutVerification(
+            JavaClass::class
         )
     }
 })

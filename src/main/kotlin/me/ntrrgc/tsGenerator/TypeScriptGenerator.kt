@@ -540,21 +540,33 @@ class TypeScriptGenerator(
                     buildList {
                         // Handle Java Bean properties first
                         if (isJavaBeanProperty(property, klass)) {
-                            // For boolean properties with 'is' prefix, we want to preserve the name
-                            val isBooleanWithIsPrefix = property.returnType.classifier == Boolean::class &&
-                                    property.name.startsWith("is", ignoreCase = true)
-
-                            val transformedPropertyName = if (isBooleanWithIsPrefix) {
-                                property.name  // Keep original name for 'is' prefixed booleans
-                            } else {
+                            val transformedPropertyName =
                                 pipeline.transformPropertyName(property.name, property, klass)
-                            }
 
                             // Check if the property has a private setter
-                            val isReadOnly = property is KMutableProperty1<*, *> &&
-                                    !Modifier.isPublic(
-                                        property.setter.javaMethod?.modifiers ?: 0
-                                    )
+                            val isReadOnly = when {
+                                property is KProperty1<*, *> -> {
+                                    if (property !is KMutableProperty1<*, *>) {
+                                        true
+                                    } else {
+                                        // Check if setter is private in Kotlin
+                                        val isSetterPrivate = property.setter.visibility == KVisibility.PRIVATE
+                                        // Fallback to Java reflection if needed
+                                        val isJavaSetterPrivate = property.setter.javaMethod?.let { method ->
+                                            !Modifier.isPublic(method.modifiers) || Modifier.isPrivate(method.modifiers)
+                                        } ?: false
+
+                                        isSetterPrivate || isJavaSetterPrivate
+                                    }
+                                }
+
+                                property.javaField != null -> {
+                                    Modifier.isFinal(property.javaField!!.modifiers)
+                                }
+
+                                else -> false
+                            }
+
 
                             // Generate as a readonly property if it has a private setter
                             if (isReadOnly) {
