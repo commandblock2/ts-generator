@@ -8,5 +8,5 @@ fun KClass<*>.binaryName(): String {
 }
 
 fun String.commentIfInvalid(): String {
-    return if (this.contains('-')) "// $this ; invalid because of -" else this
+    return if (this.contains('-')) "// $this // ; invalid because of -" else this
 }
