@@ -33,6 +33,7 @@ import me.commandblock2.tsGenerator.binaryName
 import me.commandblock2.tsGenerator.commentIfInvalid
 import me.commandblock2.tsGenerator.toKFunction
 import java.beans.Introspector
+import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -336,7 +337,7 @@ class TypeScriptGenerator(
 
             return "$typeKeyword ${klass.binaryName()}$templateParameters$extendsString{\n" +
                     staticFieldsOf(klass) +
-                    staticMethodsOf(klass) +
+                    staticMethodsOf(klass, interfaceSupertypes) +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
                     functionsOf(klass, interfaceSupertypes) +
@@ -399,8 +400,18 @@ class TypeScriptGenerator(
         }
 
 
-        private fun staticMethodsOf(klass: KClass<*>): String = try {
-            klass.java.methods
+        private fun staticMethodsOf(klass: KClass<*>, interfaceSupertypes: List<KType>): String = try {
+            (klass.java.methods.asSequence()
+                    + interfaceSupertypes.flatMap {
+                val methods = if (it.classifier is KClass<*>)
+                    (it.classifier as KClass<*>).java.methods
+                else
+                    emptyArray<Method>()
+
+                methods.toList()
+            }.asSequence()
+                    )
+
                 .filter { Modifier.isStatic(it.modifiers) }
                 .joinToString("") { method ->
                     val methodName = method.name
