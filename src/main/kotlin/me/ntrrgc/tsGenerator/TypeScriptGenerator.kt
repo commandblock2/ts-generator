@@ -292,6 +292,10 @@ class TypeScriptGenerator(
             val supertypes = klass.supertypes
                 .filterNot { it.classifier in ignoredSuperclasses }
 
+            val (interfaceSupertypes, classSupertypes) = supertypes.partition {
+                val classifier = it.classifier
+                classifier is KClass<*> && classifier.java.isInterface
+            }
 
             val extendsString = if (supertypes.isNotEmpty()) {
                 if (klass.java.isInterface) {
@@ -299,11 +303,6 @@ class TypeScriptGenerator(
                         formatKType(it).formatWithoutParenthesis()
                     }
                 } else {
-                    val (interfaceSupertypes, classSupertypes) = supertypes.partition {
-                        val classifier = it.classifier
-                        classifier is KClass<*> && classifier.java.isInterface
-                    }
-
                     val extendsClause = classSupertypes.take(1).map {
                         "extends ${formatKType(it).formatWithoutParenthesis()}"
                     }.firstOrNull() ?: ""
@@ -340,7 +339,7 @@ class TypeScriptGenerator(
                     staticMethodsOf(klass) +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
-                    functionsOf(klass) +
+                    functionsOf(klass, interfaceSupertypes) +
                     "}"
         }
 
@@ -491,8 +490,20 @@ class TypeScriptGenerator(
         }
 
 
-        private fun functionsOf(klass: KClass<*>): String = try {
-            klass.declaredMemberFunctions
+        private fun functionsOf(klass: KClass<*>, interfaceSupertypes: List<KType>): String = try {
+            (klass.declaredMemberFunctions.asSequence()
+                    + interfaceSupertypes.flatMap {
+                if (it.classifier is KClass<*>)
+                    (it.classifier as KClass<*>)
+                        .declaredMemberFunctions
+                        .filter { interfaceFunction ->
+                            !interfaceFunction.isAbstract
+                        }
+                else
+                    emptyList<KFunction<*>>()
+
+            }.asSequence()
+                    )
                 .let { functionsList ->
                     pipeline.transformFunctionList(functionsList.toList(), klass)
                 }.joinToString("") { function ->
@@ -678,15 +689,6 @@ class TypeScriptGenerator(
             val beanInfo = Introspector.getBeanInfo(klass.java)
             return beanInfo.propertyDescriptors
                 .any { bean -> bean.name == kProperty.name }
-        }
-
-        fun hasAccessibleBackingField(kProperty: KProperty<*>, klass: KClass<*>): Boolean {
-            return try {
-                val field = klass.java.getDeclaredField(kProperty.name)
-                Modifier.isPublic(field.modifiers)
-            } catch (_: NoSuchFieldException) {
-                false
-            }
         }
 
     }

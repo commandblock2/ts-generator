@@ -16,7 +16,16 @@
 
 package me.ntrrgc.tsGenerator.tests;
 
-public class JavaClass {
+
+interface BaseInterfaceWithDefaultMethod {
+    void interfaceMethod();
+
+    default void interfaceMethodWithDefaultImplementation() {
+        System.out.println("This method has a default implementation but that doesnt matter");
+    }
+}
+
+public class JavaClass implements BaseInterfaceWithDefaultMethod {
     private String name;
     private int[] results;
     private boolean finished;
@@ -55,5 +64,10 @@ public class JavaClass {
 
     public void setMultidimensional(char[][] multidimensional) {
         this.multidimensional = multidimensional;
+    }
+
+    @Override
+    public void interfaceMethod() {
+
     }
 }
