@@ -152,17 +152,21 @@ class TypeScriptGenerator(
         }
 
 
-        private fun formatKType(kType: KType): TypeScriptType {
+        private fun formatKType(kType: KType, isInTypeConstraint: Boolean = false): TypeScriptType {
             val classifier = kType.classifier
             if (classifier is KClass<*>) {
                 val existingMapping = predefinedMappings[classifier]
                 if (existingMapping != null) {
-                    return TypeScriptType.single(predefinedMappings[classifier]!!, kType.isMarkedNullable, voidType)
+                    // When in a type constraint, we shouldn't add the nullable union type
+                    return TypeScriptType.single(
+                        predefinedMappings[classifier]!!,
+                        kType.isMarkedNullable && !isInTypeConstraint,
+                        voidType
+                    )
                 }
                 if (!shouldIgnoreSuperclass(classifier) && !isSameClass(classifier, klass))
                     dependentTypes.add(classifier)
             }
-
 
             val classifierTsType =
                 if (classifier is KClass<*>) {
@@ -186,8 +190,10 @@ class TypeScriptGenerator(
                 else
                     "UNKNOWN" // giving up
 
-            return TypeScriptType.single(classifierTsType, kType.isMarkedNullable, voidType)
+            // When in a type constraint, we shouldn't add the nullable union type
+            return TypeScriptType.single(classifierTsType, kType.isMarkedNullable && !isInTypeConstraint, voidType)
         }
+
 
         private fun nonPrimitiveFromKType(kType: KType): String {
             val kClass = kType.classifier as KClass<*>
@@ -207,7 +213,7 @@ class TypeScriptGenerator(
                 return binaryName + if (kClass.typeParameters.isNotEmpty()) "<${
                     (1..kClass.typeParameters.size).joinToString(
                         ", "
-                    ) { "Any" }
+                    ) { "Object" }
                 }>" else ""
             }
 
@@ -215,7 +221,8 @@ class TypeScriptGenerator(
             return binaryName + if (kType.arguments.isNotEmpty()) {
                 "<" + kType.arguments.joinToString(", ") { arg ->
                     formatKType(
-                        arg.type ?: KotlinAnyOrNull
+                        arg.type ?: KotlinNotNull,
+                        true
                     ).formatWithoutParenthesis()
                 } + ">"
             } else ""
@@ -324,7 +331,8 @@ class TypeScriptGenerator(
                     val bounds = typeParameter.upperBounds
                     typeParameter.name + if (bounds.isNotEmpty()) {
                         " extends " + bounds.joinToString(" & ") { bound ->
-                            formatKType(bound).formatWithoutParenthesis()
+                            // Pass true for isInTypeConstraint
+                            formatKType(bound, true).formatWithoutParenthesis()
                         }
                     } else {
                         ""
@@ -333,6 +341,7 @@ class TypeScriptGenerator(
             } else {
                 ""
             }
+
 
 
             return "$typeKeyword ${klass.binaryName()}$templateParameters$extendsString{\n" +
@@ -695,6 +704,7 @@ class TypeScriptGenerator(
 
     companion object {
         private val KotlinAnyOrNull = Any::class.createType(nullable = true)
+        private val KotlinNotNull = Any::class.createType(nullable = false)
 
         fun isJavaBeanProperty(kProperty: KProperty<*>, klass: KClass<*>): Boolean {
             val beanInfo = Introspector.getBeanInfo(klass.java)
