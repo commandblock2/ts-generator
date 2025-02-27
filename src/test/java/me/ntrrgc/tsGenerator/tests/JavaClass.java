@@ -16,9 +16,11 @@
 
 package me.ntrrgc.tsGenerator.tests;
 
+import java.util.function.Consumer;
+
 interface GrandFatherInterface {
     default void someMethodYouAreNotExpecting() {
-        
+
     }
 }
 
@@ -75,4 +77,6 @@ public class JavaClass implements BaseInterfaceWithDefaultMethod {
     public void interfaceMethod() {
 
     }
+
+    public Consumer<Integer> integerConsumer;
 }

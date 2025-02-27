@@ -170,21 +170,28 @@ class TypeScriptGenerator(
 
             val classifierTsType =
                 if (classifier is KClass<*>) {
-                    predefinedMappings.getOrDefault(
-                        classifier,
-                        if (classifier.isSubclassOf(Iterable::class)
-                            || classifier.javaObjectType.isArray
-                        )
-                            arrayFromKType(kType)
-                        else if (classifier.isSubclassOf(Map::class))
-                            try {
-                                mapFromKType(kType)
-                            } catch (_: Exception) {
+
+                    val javaClass = classifier.java
+
+                    if (isFunctionalInterface(javaClass)) {
+                        formatFunctionalInterfaceType(javaClass, kType)
+                    } else {
+                        predefinedMappings.getOrDefault(
+                            classifier,
+                            if (classifier.isSubclassOf(Iterable::class)
+                                || classifier.javaObjectType.isArray
+                            )
+                                arrayFromKType(kType)
+                            else if (classifier.isSubclassOf(Map::class))
+                                try {
+                                    mapFromKType(kType)
+                                } catch (_: Exception) {
+                                    nonPrimitiveFromKType(kType)
+                                }
+                            else
                                 nonPrimitiveFromKType(kType)
-                            }
-                        else
-                            nonPrimitiveFromKType(kType)
-                    )
+                        )
+                    }
                 } else if (classifier is KTypeParameter)
                     classifier.name
                 else
@@ -660,6 +667,136 @@ class TypeScriptGenerator(
             }.joinToString(", ")
 
             // Return the TypeScript function type
+            return "($parameters) => $returnType"
+        }
+
+
+        fun isFunctionalInterface(javaType: Type): Boolean {
+
+            if (javaType is Class<*>) {
+                // Check for @FunctionalInterface annotation
+                if (javaType.isAnnotationPresent(FunctionalInterface::class.java)) {
+                    return true
+                }
+
+
+                // Check if it's an interface with exactly one abstract method
+                // not enabling that for the moment
+//                if (javaType.isInterface) {
+//                    val abstractMethods = javaType.methods.filter {
+//                        Modifier.isAbstract(it.modifiers) && !it.isDefault && !Modifier.isStatic(it.modifiers)
+//                    }
+//                    return abstractMethods.size == 1
+//                }
+            }
+
+            // Handle ParameterizedType (e.g., Consumer<String>)
+            if (javaType is ParameterizedType) {
+                return isFunctionalInterface(javaType.rawType)
+            }
+
+            return false
+        }
+
+
+        /**
+         * Finds the single abstract method in a functional interface
+         */
+        fun findSingleAbstractMethod(javaType: Type): Method? {
+            val clazz = when (javaType) {
+                is Class<*> -> javaType
+                is ParameterizedType -> javaType.rawType as Class<*>
+                else -> return null
+            }
+
+            return clazz.methods.find {
+                Modifier.isAbstract(it.modifiers) && !it.isDefault && !Modifier.isStatic(it.modifiers)
+            }
+        }
+
+        /**
+         * Maps functional interface type to TypeScript lambda type
+         */
+        fun formatFunctionalInterfaceType(type: Type, kType: KType?): String {
+            val sam = findSingleAbstractMethod(type) ?: return "Function"
+
+            // Get parameter types
+            val parameterTypes = mutableListOf<KType>()
+
+            // Try to use KType generic arguments if available
+            if (kType != null && kType.arguments.isNotEmpty()) {
+                // For functional interfaces, generic parameters can represent the parameter types
+                // and possibly the return type
+                kType.arguments.forEach {
+                    val argType = it.type
+                    if (argType != null) {
+                        parameterTypes.add(argType)
+                    }
+                }
+            }
+
+            // If we couldn't get all parameters from KType, fall back to Java reflection
+            if (parameterTypes.isEmpty() || parameterTypes.size < sam.parameterCount) {
+                sam.parameters.forEach { param ->
+                    val paramType = param.parameterizedType
+                    val kotlinType = when (paramType) {
+                        is Class<*> -> paramType.kotlin.createType()
+                        is ParameterizedType -> {
+                            val rawClass = (paramType.rawType as Class<*>).kotlin
+                            val typeArgs = paramType.actualTypeArguments.map { arg ->
+                                KTypeProjection.invariant(
+                                    when (arg) {
+                                        is Class<*> -> arg.kotlin.createType()
+                                        else -> Any::class.createType(nullable = true)
+                                    }
+                                )
+                            }
+                            rawClass.createType(typeArgs)
+                        }
+
+                        else -> Any::class.createType(nullable = true)
+                    }
+                    parameterTypes.add(kotlinType)
+                }
+            }
+
+            // Format parameters for TypeScript
+            val parameters = parameterTypes.take(sam.parameterCount).mapIndexed { index, paramType ->
+                // Use formatKType function from your existing code
+                // Assuming we can call this function from where this function is used
+                "param$index: ${formatKType(paramType).formatWithoutParenthesis()}"
+            }.joinToString(", ")
+
+            // Determine return type
+            val returnType = if (sam.returnType == Void.TYPE) {
+                "void"
+            } else if (kType != null && kType.arguments.size > sam.parameterCount) {
+                // Last generic argument might be the return type
+                formatKType(
+                    kType.arguments.last().type ?: Any::class.createType(nullable = true)
+                ).formatWithoutParenthesis()
+            } else {
+                // Fall back to Java reflection for return type
+                when (val returnJavaType = sam.genericReturnType) {
+                    is Class<*> -> formatKType(returnJavaType.kotlin.createType()).formatWithoutParenthesis()
+                    is ParameterizedType -> {
+                        val rawClass = (returnJavaType.rawType as Class<*>).kotlin
+                        val typeArgs = returnJavaType.actualTypeArguments.map { arg ->
+                            KTypeProjection.invariant(
+                                when (arg) {
+                                    is Class<*> -> arg.kotlin.createType()
+                                    else -> Any::class.createType(nullable = true)
+                                }
+                            )
+                        }
+                        formatKType(rawClass.createType(typeArgs)).formatWithoutParenthesis()
+                    }
+
+                    else -> "any"
+                }
+            }
+
+            // Return TypeScript function type
             return "($parameters) => $returnType"
         }
 
