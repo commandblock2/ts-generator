@@ -16,8 +16,13 @@
 
 package me.ntrrgc.tsGenerator.tests;
 
+interface GrandFatherInterface {
+    default void someMethodYouAreNotExpecting() {
+        
+    }
+}
 
-interface BaseInterfaceWithDefaultMethod {
+interface BaseInterfaceWithDefaultMethod extends GrandFatherInterface {
     void interfaceMethod();
 
     default void interfaceMethodWithDefaultImplementation() {
