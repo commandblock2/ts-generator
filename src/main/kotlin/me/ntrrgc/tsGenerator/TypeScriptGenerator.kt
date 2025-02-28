@@ -352,8 +352,11 @@ class TypeScriptGenerator(
 
 
             return "$typeKeyword ${klass.binaryName()}$templateParameters$extendsString{\n" +
-                    staticFieldsOf(klass) +
-                    (if (klass.java.isInterface) "" else staticMethodsOf(klass, interfaceSupertypes)) +
+                    (if (klass.java.isInterface) "" else
+                        staticFieldsOf(klass) + staticMethodsOf(
+                            klass,
+                            interfaceSupertypes
+                        )) +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
                     functionsOf(klass, interfaceSupertypes) +
