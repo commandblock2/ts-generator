@@ -152,7 +152,11 @@ class TypeScriptGenerator(
         }
 
 
-        private fun formatKType(kType: KType, isInTypeConstraint: Boolean = false): TypeScriptType {
+        private fun formatKType(
+            kType: KType,
+            isInTypeConstraint: Boolean = false,
+            transformFunctionalInterface: Boolean = true
+        ): TypeScriptType {
             val classifier = kType.classifier
             if (classifier is KClass<*>) {
                 val existingMapping = predefinedMappings[classifier]
@@ -173,7 +177,7 @@ class TypeScriptGenerator(
 
                     val javaClass = classifier.java
 
-                    if (isFunctionalInterface(javaClass)) {
+                    if (isFunctionalInterface(javaClass) && transformFunctionalInterface) {
                         formatFunctionalInterfaceType(javaClass, kType)
                     } else {
                         predefinedMappings.getOrDefault(
@@ -315,16 +319,16 @@ class TypeScriptGenerator(
             val extendsString = if (supertypes.isNotEmpty()) {
                 if (klass.java.isInterface) {
                     " extends " + supertypes.joinToString(", ") {
-                        formatKType(it).formatWithoutParenthesis()
+                        formatKType(it, false, false).formatWithoutParenthesis()
                     }
                 } else {
                     val extendsClause = classSupertypes.take(1).map {
-                        "extends ${formatKType(it).formatWithoutParenthesis()}"
+                        "extends ${formatKType(it, false, false).formatWithoutParenthesis()}"
                     }.firstOrNull() ?: ""
 
                     val implementsClause = if (interfaceSupertypes.isNotEmpty()) {
                         "implements " + interfaceSupertypes.joinToString(", ") {
-                            formatKType(it).formatWithoutParenthesis()
+                            formatKType(it, false, false).formatWithoutParenthesis()
                         } + " "
                     } else ""
 
@@ -368,7 +372,7 @@ class TypeScriptGenerator(
                             formatKType(bound) // unused result but needs to record dependencies
                             "Object | number | string | boolean"
                         } else
-                            formatKType(bound, true).formatWithoutParenthesis()
+                            formatKType(bound, true, false).formatWithoutParenthesis()
                     }
                 } else {
                     ""
