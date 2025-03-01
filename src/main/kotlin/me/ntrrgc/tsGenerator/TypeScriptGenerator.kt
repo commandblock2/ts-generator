@@ -366,7 +366,7 @@ class TypeScriptGenerator(
                             )
                         ) {
                             formatKType(bound) // unused result but needs to record dependencies
-                            "Object | number | string"
+                            "Object | number | string | boolean"
                         } else
                             formatKType(bound, true).formatWithoutParenthesis()
                     }
