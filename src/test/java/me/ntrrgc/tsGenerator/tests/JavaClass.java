@@ -16,6 +16,8 @@
 
 package me.ntrrgc.tsGenerator.tests;
 
+import java.util.ArrayList;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 interface GrandFatherInterface {
@@ -77,6 +79,11 @@ public class JavaClass implements BaseInterfaceWithDefaultMethod {
     public void interfaceMethod() {
 
     }
+
+    public Consumer<Consumer<Consumer<Integer>>> isThatNullable;
+
+    public Class<Class<Class<Class<Integer>>>> whatAboutThis;
+
 
     public Consumer<Integer> integerConsumer;
 }

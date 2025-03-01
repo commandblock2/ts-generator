@@ -339,7 +339,15 @@ class TypeScriptGenerator(
                     typeParameter.name + if (bounds.isNotEmpty()) {
                         " extends " + bounds.joinToString(" & ") { bound ->
                             // Pass true for isInTypeConstraint
-                            formatKType(bound, true).formatWithoutParenthesis()
+                            if (bound.classifier is KClass<*> && isSameClass(
+                                    bound.classifier as KClass<*>,
+                                    Any::class
+                                )
+                            ) {
+                                formatKType(bound) // unused result but needs to record dependencies
+                                "Object | number | string"
+                            } else
+                                formatKType(bound, true).formatWithoutParenthesis()
                         }
                     } else {
                         ""
