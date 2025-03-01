@@ -16,8 +16,6 @@
 
 package me.ntrrgc.tsGenerator.tests;
 
-import java.util.ArrayList;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 interface GrandFatherInterface {
@@ -86,4 +84,12 @@ public class JavaClass implements BaseInterfaceWithDefaultMethod {
 
 
     public Consumer<Integer> integerConsumer;
+
+    public <E> void genericMethod(E _unused) {
+
+    }
+
+    public <E, R> R anotherGenericMethod(E _unused) {
+        return null;
+    }
 }

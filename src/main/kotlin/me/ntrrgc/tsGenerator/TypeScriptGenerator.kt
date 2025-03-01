@@ -333,29 +333,7 @@ class TypeScriptGenerator(
             } else ""
 
 
-            val templateParameters = if (klass.typeParameters.isNotEmpty()) {
-                "<" + klass.typeParameters.joinToString(", ") { typeParameter ->
-                    val bounds = typeParameter.upperBounds
-                    typeParameter.name + if (bounds.isNotEmpty()) {
-                        " extends " + bounds.joinToString(" & ") { bound ->
-                            // Pass true for isInTypeConstraint
-                            if (bound.classifier is KClass<*> && isSameClass(
-                                    bound.classifier as KClass<*>,
-                                    Any::class
-                                )
-                            ) {
-                                formatKType(bound) // unused result but needs to record dependencies
-                                "Object | number | string"
-                            } else
-                                formatKType(bound, true).formatWithoutParenthesis()
-                        }
-                    } else {
-                        ""
-                    }
-                } + ">"
-            } else {
-                ""
-            }
+            val templateParameters = formatTypeParameters(klass.typeParameters)
 
 
 
@@ -363,12 +341,39 @@ class TypeScriptGenerator(
                     (if (klass.java.isInterface) "" else
                         staticFieldsOf(klass) + staticMethodsOf(
                             klass,
-                            interfaceSupertypes
+                            interfaceSupertypes,
+                            klass.typeParameters
                         )) +
                     constructorsOf(klass) +
                     propertiesOf(klass) +
-                    functionsOf(klass, interfaceSupertypes) +
+                    functionsOf(klass, interfaceSupertypes, klass.typeParameters) +
                     "}"
+        }
+
+        private fun formatTypeParameters(typeParameters: List<KTypeParameter>): String {
+            if (typeParameters.isEmpty()) {
+                return ""
+            }
+
+            return "<" + typeParameters.joinToString(", ") { typeParameter ->
+                val bounds = typeParameter.upperBounds
+                typeParameter.name + if (bounds.isNotEmpty()) {
+                    " extends " + bounds.joinToString(" & ") { bound ->
+                        // Pass true for isInTypeConstraint
+                        if (bound.classifier is KClass<*> && isSameClass(
+                                bound.classifier as KClass<*>,
+                                Any::class
+                            )
+                        ) {
+                            formatKType(bound) // unused result but needs to record dependencies
+                            "Object | number | string"
+                        } else
+                            formatKType(bound, true).formatWithoutParenthesis()
+                    }
+                } else {
+                    ""
+                }
+            } + ">"
         }
 
 
@@ -391,23 +396,7 @@ class TypeScriptGenerator(
                 .filter { Modifier.isStatic(it.modifiers) }
                 .joinToString("") { field ->
                     val fieldName = field.name
-                    val fieldType = field.genericType.let { type ->
-                        when (type) {
-                            is Class<*> -> createKotlinType(type)
-                            is ParameterizedType -> {
-                                val rawType = (type.rawType as Class<*>).kotlin
-                                val typeArgs = type.actualTypeArguments.map { arg ->
-                                    when (arg) {
-                                        is Class<*> -> createKotlinType(arg)
-                                        else -> Any::class.createType(nullable = true)
-                                    }
-                                }
-                                rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
-                            }
-
-                            else -> Any::class.createType(nullable = true)
-                        }
-                    }
+                    val fieldType = javaTypeToKotlinType(field.genericType)
 
                     val visibility = when {
                         Modifier.isPrivate(field.modifiers) -> "// private "
@@ -426,8 +415,30 @@ class TypeScriptGenerator(
             "" // Return empty string when dependency is missing
         }
 
+        private fun javaTypeToKotlinType(type: Type): KType {
+            return when (type) {
+                is Class<*> -> createKotlinType(type)
+                is ParameterizedType -> {
+                    val rawType = (type.rawType as Class<*>).kotlin
+                    val typeArgs = type.actualTypeArguments.map { arg ->
+                        when (arg) {
+                            is Class<*> -> createKotlinType(arg)
+                            else -> Any::class.createType(nullable = true)
+                        }
+                    }
+                    rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
+                }
 
-        private fun staticMethodsOf(klass: KClass<*>, interfaceSupertypes: List<KType>): String = try {
+                else -> Any::class.createType(nullable = true)
+            }
+        }
+
+
+        private fun staticMethodsOf(
+            klass: KClass<*>,
+            interfaceSupertypes: List<KType>,
+            typeParameters: List<KTypeParameter>
+        ): String = try {
             (klass.java.methods.asSequence()
                     + interfaceSupertypes.flatMap {
                 val methods = if (it.classifier is KClass<*>)
@@ -442,41 +453,23 @@ class TypeScriptGenerator(
                 .filter { Modifier.isStatic(it.modifiers) }
                 .joinToString("") { method ->
                     val methodName = method.name
-                    val returnType = method.genericReturnType.let { type ->
-                        when (type) {
-                            is Class<*> -> createKotlinType(type)
-                            is ParameterizedType -> {
-                                val rawType = (type.rawType as Class<*>).kotlin
-                                val typeArgs = type.actualTypeArguments.map { arg ->
-                                    when (arg) {
-                                        is Class<*> -> createKotlinType(arg)
-                                        else -> Any::class.createType(nullable = true)
-                                    }
-                                }
-                                rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
-                            }
+                    val typeParamsNotOfClass = mutableListOf<Type>()
+                    val returnType = javaTypeToKotlinType(method.genericReturnType)
 
-                            else -> Any::class.createType(nullable = true)
-                        }
-                    }
+                    if (method.genericReturnType is ParameterizedType &&
+                        !typeParameters.any { it.name == method.genericReturnType.typeName }
+                    )
+                        typeParamsNotOfClass.add(method.genericReturnType)
 
                     val parameters = method.parameters
                         .joinToString(", ") { param ->
-                            val paramType = when (val type = param.parameterizedType) {
-                                is Class<*> -> createKotlinType(type)
-                                is ParameterizedType -> {
-                                    val rawType = (type.rawType as Class<*>).kotlin
-                                    val typeArgs = type.actualTypeArguments.map { arg ->
-                                        when (arg) {
-                                            is Class<*> -> createKotlinType(arg)
-                                            else -> Any::class.createType(nullable = true)
-                                        }
-                                    }
-                                    rawType.createType(typeArgs.map { KTypeProjection.invariant(it) })
-                                }
+                            val paramType = javaTypeToKotlinType(param.parameterizedType)
 
-                                else -> Any::class.createType(nullable = true)
-                            }
+                            if (param.parameterizedType is ParameterizedType &&
+                                !typeParameters.any { it.name == param.parameterizedType.typeName }
+                            )
+                                typeParamsNotOfClass.add(param.parameterizedType)
+
                             "param${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
                         }
 
@@ -486,7 +479,13 @@ class TypeScriptGenerator(
                         else -> ""
                     }
 
-                    "    static $visibility$methodName($parameters): ${formatKType(returnType).formatWithoutParenthesis()};\n"
+                    val typeParamsString = typeParamsNotOfClass.map {
+                        javaTypeToKotlinType(it)
+                    }.filterIsInstance<KTypeParameter>().let {
+                        formatTypeParameters(it)
+                    }
+
+                    "    static $visibility$methodName$typeParamsString($parameters): ${formatKType(returnType).formatWithoutParenthesis()};\n"
                         .commentIfInvalid()
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
@@ -528,7 +527,11 @@ class TypeScriptGenerator(
         }
 
 
-        private fun functionsOf(klass: KClass<*>, interfaceSupertypes: List<KType>): String = try {
+        private fun functionsOf(
+            klass: KClass<*>,
+            interfaceSupertypes: List<KType>,
+            typeParameters: List<KTypeParameter>
+        ): String = try {
             (klass.declaredMemberFunctions.asSequence()
                     + interfaceSupertypes.flatMap {
                 if (it.classifier is KClass<*>)
@@ -554,6 +557,16 @@ class TypeScriptGenerator(
                             "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
 
                         }
+
+                    val typeParamsNotOfClass = mutableListOf<KTypeParameter>()
+                    if (returnType.classifier is KTypeParameter && !typeParameters.any { it.name == (returnType.classifier as KTypeParameter).name })
+                        typeParamsNotOfClass.add(returnType.classifier as KTypeParameter)
+
+                    typeParamsNotOfClass.addAll(function.parameters.map { it.type.classifier }
+                        .filterIsInstance<KTypeParameter>()
+                        .filter { !typeParameters.any { parameter -> parameter.name == it.name } }
+                    )
+
                     val visibility = when (function.visibility) {
                         KVisibility.PRIVATE -> "// private "
                         KVisibility.PROTECTED -> "protected "
@@ -562,8 +575,12 @@ class TypeScriptGenerator(
                         else -> ""
                     }
 
+
                     val formattedReturnType = formatKType(returnType).formatWithoutParenthesis()
-                    "    $visibility$functionName($parameters): $formattedReturnType;\n"
+
+                    val typeParamString = formatTypeParameters(typeParamsNotOfClass)
+
+                    "    $visibility$functionName$typeParamString($parameters): $formattedReturnType;\n"
                         .commentIfInvalid()
                 }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
@@ -603,7 +620,7 @@ class TypeScriptGenerator(
                                         // Fallback to Java reflection if needed
                                         val isJavaSetterPrivate = property.setter.javaMethod?.let { method ->
                                             !Modifier.isPublic(method.modifiers) || Modifier.isPrivate(method.modifiers)
-                                        } ?: false
+                                        } == true
 
                                         isSetterPrivate || isJavaSetterPrivate
                                     }
@@ -750,23 +767,7 @@ class TypeScriptGenerator(
             if (parameterTypes.isEmpty() || parameterTypes.size < sam.parameterCount) {
                 sam.parameters.forEach { param ->
                     val paramType = param.parameterizedType
-                    val kotlinType = when (paramType) {
-                        is Class<*> -> paramType.kotlin.createType()
-                        is ParameterizedType -> {
-                            val rawClass = (paramType.rawType as Class<*>).kotlin
-                            val typeArgs = paramType.actualTypeArguments.map { arg ->
-                                KTypeProjection.invariant(
-                                    when (arg) {
-                                        is Class<*> -> arg.kotlin.createType()
-                                        else -> Any::class.createType(nullable = true)
-                                    }
-                                )
-                            }
-                            rawClass.createType(typeArgs)
-                        }
-
-                        else -> Any::class.createType(nullable = true)
-                    }
+                    val kotlinType = javaTypeToKotlinType(paramType)
                     parameterTypes.add(kotlinType)
                 }
             }
@@ -788,23 +789,7 @@ class TypeScriptGenerator(
                 ).formatWithoutParenthesis()
             } else {
                 // Fall back to Java reflection for return type
-                when (val returnJavaType = sam.genericReturnType) {
-                    is Class<*> -> formatKType(returnJavaType.kotlin.createType()).formatWithoutParenthesis()
-                    is ParameterizedType -> {
-                        val rawClass = (returnJavaType.rawType as Class<*>).kotlin
-                        val typeArgs = returnJavaType.actualTypeArguments.map { arg ->
-                            KTypeProjection.invariant(
-                                when (arg) {
-                                    is Class<*> -> arg.kotlin.createType()
-                                    else -> Any::class.createType(nullable = true)
-                                }
-                            )
-                        }
-                        formatKType(rawClass.createType(typeArgs)).formatWithoutParenthesis()
-                    }
-
-                    else -> "any"
-                }
+                javaTypeToKotlinType(sam.genericReturnType)
             }
 
             // Return TypeScript function type
