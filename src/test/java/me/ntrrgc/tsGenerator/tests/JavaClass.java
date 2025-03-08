@@ -92,4 +92,8 @@ public class JavaClass implements BaseInterfaceWithDefaultMethod {
     public <E, R> R anotherGenericMethod(E _unused) {
         return null;
     }
+
+    public <E extends Comparable<E>> E yetAnotherGenericMethod(E _unused, E other) {
+        return null;
+    }
 }

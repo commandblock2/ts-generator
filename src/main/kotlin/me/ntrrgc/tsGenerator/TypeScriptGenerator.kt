@@ -359,7 +359,7 @@ class TypeScriptGenerator(
                 return ""
             }
 
-            return "<" + typeParameters.joinToString(", ") { typeParameter ->
+            return "<" + typeParameters.distinctBy { it.name }.joinToString(", ") { typeParameter ->
                 val bounds = typeParameter.upperBounds
                 typeParameter.name + if (bounds.isNotEmpty()) {
                     " extends " + bounds.joinToString(" & ") { bound ->
