@@ -842,9 +842,12 @@ class TypeScriptGenerator(
 
     private val shouldIgnoreSuperclass: (KClass<*>) -> Boolean = { klass: KClass<*> ->
         try {
-            klass.isSubclassOf(Iterable::class) || klass.javaObjectType.isArray || klass.isSubclassOf(Map::class)
+            val array = klass.javaObjectType.isArray
+            val iterable = klass.isSubclassOf(Iterable::class)
+            val map = klass.isSubclassOf(Map::class)
+            iterable || array || map
         } catch (throwable: Throwable) {
-            print(throwable.message)
+            println("Error in shouldIgnoreSuperclass: ${throwable.message}")
             false
         }
     }
