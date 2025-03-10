@@ -841,7 +841,12 @@ class TypeScriptGenerator(
             ).plus(mappings) // mappings has a higher priority
 
     private val shouldIgnoreSuperclass: (KClass<*>) -> Boolean = { klass: KClass<*> ->
-        klass.isSubclassOf(Iterable::class) || klass.javaObjectType.isArray || klass.isSubclassOf(Map::class)
+        try {
+            klass.isSubclassOf(Iterable::class) || klass.javaObjectType.isArray || klass.isSubclassOf(Map::class)
+        } catch (throwable: Throwable) {
+            print(throwable.message)
+            false
+        }
     }
 
 
