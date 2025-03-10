@@ -420,6 +420,9 @@ class TypeScriptGenerator(
         } catch (exception: IllegalStateException) {
             print("Likely unable to infer accessibility: ${exception.message}")
             ""
+        } catch (exception: Exception) {
+            println("Other exceptions happend ${exception.message}")
+            ""
         }
 
         private fun javaTypeToKotlinType(type: Type): KType {
@@ -504,6 +507,9 @@ class TypeScriptGenerator(
         } catch (exception: IllegalStateException) {
             print("Likely unable to infer accessibility: ${exception.message}")
             ""
+        } catch (exception: Exception) {
+            println("Other exceptions happend ${exception.message}")
+            ""
         }
 
 
@@ -547,6 +553,9 @@ class TypeScriptGenerator(
             "" // Return empty string when dependency is missing
         } catch (exception: IllegalStateException) {
             println("Likely unable to infer accessibility: ${exception.message}")
+            ""
+        } catch (exception: Exception) {
+            println("Other exceptions happend ${exception.message}")
             ""
         }
 
@@ -615,6 +624,9 @@ class TypeScriptGenerator(
             "" // Return empty string when dependency is missing
         } catch (exception: IllegalStateException) {
             print("Likely unable to infer accessibility: ${exception.message}")
+            ""
+        } catch (exception: Exception) {
+            println("Other exceptions happend ${exception.message}")
             ""
         }
 
@@ -710,6 +722,9 @@ class TypeScriptGenerator(
             "" // Return empty string when dependency is missing
         } catch (exception: IllegalStateException) {
             print("Likely unable to infer accessibility: ${exception.message}")
+            ""
+        } catch (exception: Exception) {
+            println("Other exceptions happend ${exception.message}")
             ""
         }
 
