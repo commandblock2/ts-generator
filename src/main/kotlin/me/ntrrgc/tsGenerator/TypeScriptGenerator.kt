@@ -41,7 +41,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.declaredMemberProperties
-import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.javaMethod
@@ -182,11 +181,11 @@ class TypeScriptGenerator(
                     } else {
                         predefinedMappings.getOrDefault(
                             classifier,
-                            if (classifier.isSubclassOf(Iterable::class)
+                            if (Iterable::class.java.isAssignableFrom(classifier.java)
                                 || classifier.javaObjectType.isArray
                             )
                                 arrayFromKType(kType)
-                            else if (classifier.isSubclassOf(Map::class))
+                            else if (Map::class.java.isAssignableFrom(classifier.java))
                                 try {
                                     mapFromKType(kType)
                                 } catch (_: Exception) {
