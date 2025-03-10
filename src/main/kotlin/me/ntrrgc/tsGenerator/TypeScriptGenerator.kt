@@ -243,8 +243,12 @@ class TypeScriptGenerator(
         private fun getIterableElementType(kType: KType): KType? {
             // Traverse supertypes to find `Iterable<T>`
             val classifier = kType.classifier as? KClass<*> ?: return null
-            val iterableSupertype = classifier.supertypes
-                .firstOrNull { it.classifier == Iterable::class } ?: return null
+            val iterableSupertype = try {
+                classifier.supertypes
+                    .firstOrNull { it.classifier == Iterable::class } ?: return null
+            } catch (throwable: Throwable) {
+                return null
+            }
 
             // Extract the type argument of `Iterable<T>`
             return iterableSupertype.arguments.firstOrNull()?.type
@@ -308,8 +312,12 @@ class TypeScriptGenerator(
                 else -> "class"
             }
 
-            val supertypes = klass.supertypes
-                .filterNot { it.classifier in ignoredSuperclasses }
+            val supertypes = try {
+                klass.supertypes
+                    .filterNot { it.classifier in ignoredSuperclasses }
+            } catch (throwable: Throwable) {
+                emptyList<KType>()
+            }
 
             val (interfaceSupertypes, classSupertypes) = supertypes.partition {
                 val classifier = it.classifier
