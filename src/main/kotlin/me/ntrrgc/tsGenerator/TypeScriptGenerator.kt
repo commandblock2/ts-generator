@@ -508,34 +508,45 @@ class TypeScriptGenerator(
 
 
         private fun constructorsOf(klass: KClass<*>): String = try {
-            klass.constructors.joinToString("") { constructor ->
-                val parameters = constructor.parameters
-                    .joinToString(", ") { param ->
-                        val paramType = pipeline.transformFunctionParameterType(param.type, param, constructor, klass)
-                        "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+            // Wrap the entire reflection process in a try-catch
+            try {
+                // Force early class loading to trigger any NoClassDefFoundError
+                klass.java.declaredConstructors
 
+                klass.constructors.joinToString("") { constructor ->
+                    val parameters = constructor.parameters
+                        .joinToString(", ") { param ->
+                            val paramType =
+                                pipeline.transformFunctionParameterType(param.type, param, constructor, klass)
+                            "${param.name}: ${formatKType(paramType).formatWithoutParenthesis()}"
+                        }
+                    val visibility = when (constructor.visibility) {
+                        KVisibility.PRIVATE -> "// private "
+                        KVisibility.PROTECTED -> "protected "
+                        KVisibility.PUBLIC -> ""
+                        KVisibility.INTERNAL -> ""
+                        else -> ""
                     }
-                val visibility = when (constructor.visibility) {
-                    KVisibility.PRIVATE -> "// private "
-                    KVisibility.PROTECTED -> "protected "
-                    KVisibility.PUBLIC -> ""
-                    KVisibility.INTERNAL -> ""
-                    else -> ""
+                    "    ${visibility}constructor($parameters)\n"
+                        .commentIfInvalid()
                 }
-                "    ${visibility}constructor($parameters)\n"
-                    .commentIfInvalid()
+            } catch (e: Throwable) {
+                // This will catch all exceptions including NoClassDefFoundError and lower-level
+                // reflection errors like the one you're experiencing
+                println("Unable to process constructors for ${klass.qualifiedName}: ${e.javaClass.name}: ${e.message}")
+                ""
             }
         } catch (exception: kotlin.reflect.jvm.internal.KotlinReflectionInternalError) {
-            print(exception.toString())
+            println(exception.toString())
             ""
         } catch (exception: java.lang.IllegalArgumentException) {
-            print(exception.toString())
+            println(exception.toString())
             ""
         } catch (exception: NoClassDefFoundError) {
-            print("Missing dependency: ${exception.message}")
+            println("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
         } catch (exception: IllegalStateException) {
-            print("Likely unable to infer accessibility: ${exception.message}")
+            println("Likely unable to infer accessibility: ${exception.message}")
             ""
         }
 
