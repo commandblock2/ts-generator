@@ -844,7 +844,7 @@ class TypeScriptGenerator(
         try {
             val array = klass.javaObjectType.isArray
             val iterable = Iterable::class.java.isAssignableFrom(klass.java)
-            val map = klass.isSubclassOf(Map::class)
+            val map = Map::class.java.isAssignableFrom(klass.java)
             iterable || array || map
         } catch (throwable: Throwable) {
             println("Error in shouldIgnoreSuperclass: ${throwable.message}")
