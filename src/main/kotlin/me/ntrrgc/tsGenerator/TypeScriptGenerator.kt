@@ -833,8 +833,20 @@ class TypeScriptGenerator(
     init {
         rootClasses.forEach {
             visitClass(it)
-            for (klass in it.nestedClasses) {
-                visitClass(klass)
+
+            try {
+                val nestedClasses = it.nestedClasses
+
+                nestedClasses.forEach { klass ->
+                    try {
+                        visitClass(klass)
+                    } catch (throwable: Throwable) {
+                        print("Skipping nested class $klass for $it, exception occurred: ${throwable.message}")
+                    }
+                }
+
+            } catch (throwable: Throwable) {
+                print("Skipping all nested class for $it, exception occurred: ${throwable.message})")
             }
         }
     }
