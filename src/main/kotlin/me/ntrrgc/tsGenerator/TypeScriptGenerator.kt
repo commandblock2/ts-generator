@@ -417,6 +417,9 @@ class TypeScriptGenerator(
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
+        } catch (exception: IllegalStateException) {
+            print("Likely unable to infer accessibility: ${exception.message}")
+            ""
         }
 
         private fun javaTypeToKotlinType(type: Type): KType {
@@ -498,6 +501,9 @@ class TypeScriptGenerator(
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
+        } catch (exception: IllegalStateException) {
+            print("Likely unable to infer accessibility: ${exception.message}")
+            ""
         }
 
 
@@ -528,6 +534,9 @@ class TypeScriptGenerator(
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
+        } catch (exception: IllegalStateException) {
+            print("Likely unable to infer accessibility: ${exception.message}")
+            ""
         }
 
 
@@ -593,6 +602,9 @@ class TypeScriptGenerator(
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
+        } catch (exception: IllegalStateException) {
+            print("Likely unable to infer accessibility: ${exception.message}")
+            ""
         }
 
 
@@ -685,6 +697,9 @@ class TypeScriptGenerator(
         } catch (exception: NoClassDefFoundError) {
             print("Missing dependency: ${exception.message}")
             "" // Return empty string when dependency is missing
+        } catch (exception: IllegalStateException) {
+            print("Likely unable to infer accessibility: ${exception.message}")
+            ""
         }
 
 
