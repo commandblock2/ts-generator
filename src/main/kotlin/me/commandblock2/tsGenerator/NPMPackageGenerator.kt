@@ -33,7 +33,7 @@ class NPMPackageGenerator(val typeScriptGenerator: TypeScriptGenerator, val pack
 
     val packageJson = """
         {
-            "name": "@$packageName/types",
+            "name": "@types/$packageName",
             "version": "1.0.0",
             "private": true,
             "files": [
