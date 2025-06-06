@@ -27,25 +27,34 @@ fun TypeScriptGenerator.generateNPMPackage(packageName: String): NPMPackageGener
 
 // The generator class
 
-class NPMPackageGenerator(val typeScriptGenerator: TypeScriptGenerator, val packageName: String) {
+class NPMPackageGenerator(
+    val typeScriptGenerator: TypeScriptGenerator,
+    val packageName: String,
+    val version: String = "1.0.0",
+    extraFiles: String = "",
+    extraTypesVersion: String = "",
+    otherExtras: String = ""
+) {
 
     val typesFolder = "types"
 
     val packageJson = """
         {
             "name": "$packageName",
-            "version": "1.0.0",
-            "private": true,
+            "version": "$version",
             "files": [
                 "$typesFolder/**/*.d.ts"
+                ${if (extraFiles.isNotEmpty()) ",\n$extraFiles" else ""}
             ],
             "typesVersions": {
                 "*": {
                     "*": [
                         "./$typesFolder/*"
+                        ${if (extraTypesVersion.isNotEmpty()) ",\n$extraTypesVersion" else ""}
                     ]
                 }
             }
+            ${if (otherExtras.isNotEmpty()) ",\n$otherExtras" else ""}
         }
     """.trimIndent()
 
