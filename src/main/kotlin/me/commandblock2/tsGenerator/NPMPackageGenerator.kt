@@ -33,29 +33,34 @@ class NPMPackageGenerator(
     val version: String = "1.0.0",
     extraFiles: String = "",
     extraTypesVersion: String = "",
-    otherExtras: String = ""
+    otherExtras: String = "",
+    // New parameter to directly inject the typesVersions JSON content
+    customTypesVersionsJson: String? = null
 ) {
-
     val typesFolder = "types"
-
     val packageJson = """
-        {
-            "name": "$packageName",
-            "version": "$version",
-            "files": [
-                "$typesFolder/**/*.d.ts"
-                ${if (extraFiles.isNotEmpty()) ",\n$extraFiles" else ""}
-            ],
-            "typesVersions": {
-                "*": {
-                    "*": [
-                        "./$typesFolder/*"
-                        ${if (extraTypesVersion.isNotEmpty()) ",\n$extraTypesVersion" else ""}
-                    ]
-                }
-            }
-            ${if (otherExtras.isNotEmpty()) ",\n$otherExtras" else ""}
-        }
+{
+    "name": "$packageName",
+    "version": "$version",
+    "files": [
+        "$typesFolder/**/*.d.ts"
+        ${if (extraFiles.isNotEmpty()) ",\n$extraFiles" else ""}
+    ],
+    "typesVersions": ${
+        // If custom JSON is provided, use it directly (assume it's valid JSON for typesVersions)
+        customTypesVersionsJson
+            ?: // Otherwise, generate the default typesVersions block
+            """{
+                    "*": {
+                        "*": [
+                            "./$typesFolder/*"
+                            ${if (extraTypesVersion.isNotEmpty()) ",\n$extraTypesVersion" else ""}
+                        ]
+                    }
+                }"""
+    }
+    ${if (otherExtras.isNotEmpty()) ",\n$otherExtras" else ""}
+}
     """.trimIndent()
 
     val tsConfig = """
